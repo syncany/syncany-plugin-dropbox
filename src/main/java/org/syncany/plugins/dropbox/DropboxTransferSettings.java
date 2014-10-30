@@ -19,20 +19,17 @@ package org.syncany.plugins.dropbox;
 
 import java.util.Map;
 
-import org.syncany.plugins.PluginOptionSpec;
-import org.syncany.plugins.PluginOptionSpec.ValueType;
-import org.syncany.plugins.PluginOptionSpecs;
+import org.simpleframework.xml.Element;
+import org.syncany.plugins.transfer.PluginOptionCallback;
+import org.syncany.plugins.transfer.Setup;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.TransferSettings;
 
-/**
- * The FTP connection represents the settings required to connect to an
- * FTP-based storage backend. It can be used to initialize/create an 
- * {@link DropboxTransferManager} and is part of the {@link DropboxPlugin}.  
- *
- * @author Philipp C. Heckel <philipp.heckel@gmail.com>
- */
 public class DropboxTransferSettings extends TransferSettings {
+	@Element(name = "authToken", required = true)
+	@Setup(callback = DropboxAuthPluginOptionCallback.class)
+	private String authToken;
+	
 	private String hostname;
 	private String username;
 	private String password;
@@ -80,25 +77,17 @@ public class DropboxTransferSettings extends TransferSettings {
 	}
 
 	@Override
-	public void init(Map<String, String> optionValues) throws StorageException {
-		getOptionSpecs().validate(optionValues);
-		this.hostname = optionValues.get("hostname");
-		this.username = optionValues.get("username");
-		this.password = optionValues.get("password");
-		this.path = optionValues.get("path");
-		this.port = Integer.parseInt(optionValues.get("port"));
-	}
-
-	@Override
-	public PluginOptionSpecs getOptionSpecs() {
-		return new PluginOptionSpecs(new PluginOptionSpec("hostname", "Hostname", ValueType.STRING, true, false, null), new PluginOptionSpec(
-				"username", "Username", ValueType.STRING, true, false, null), new PluginOptionSpec("password", "Password", ValueType.STRING, true,
-				true, null), new PluginOptionSpec("path", "Path", ValueType.STRING, true, false, null), new PluginOptionSpec("port", "Port",
-				ValueType.INT, false, false, "21"));
-	}
-
-	@Override
 	public String toString() {
 		return DropboxTransferSettings.class.getSimpleName() + "[hostname=" + hostname + ":" + port + ", username=" + username + ", path=" + path + "]";
+	}
+	
+	private class DropboxAuthPluginOptionCallback implements PluginOptionCallback {
+
+		@Override
+		public String preQueryCallback() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
 	}
 }

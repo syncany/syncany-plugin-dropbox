@@ -23,6 +23,9 @@ import org.syncany.plugins.transfer.TransferPlugin;
 import org.syncany.plugins.transfer.TransferSettings;
 
 public class DropboxPlugin extends TransferPlugin {
+    public static final String APP_KEY = "...";
+    public static final String APP_SECRET = "...";
+	
 	public DropboxPlugin() {
 		super("dropbox");
 	}
@@ -33,7 +36,7 @@ public class DropboxPlugin extends TransferPlugin {
 	}
 
 	@Override
-	public TransferSettings createSettings() {
+	public TransferSettings createEmptySettings() {
 		return new DropboxTransferSettings();
 	}
 }
