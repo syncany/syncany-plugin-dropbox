@@ -1,0 +1,38 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+configurations {
+	pluginjar
+}
+
+project.ext {
+	pluginId = "dropbox"
+	pluginName = "Dropbox"
+	pluginVersion = "0.1.13-alpha"	
+	pluginDebianVersion = "1"	
+	pluginDate = new Date()
+	pluginAppMinVersion = "0.1.12-alpha"
+	pluginRelease = rootProject.ext.applicationRelease
+	pluginConflictsWith = ""
+	
+	pluginVersionSnapshot = rootProject.ext.applicationVersionSnapshot
+	pluginVersionFull = "${pluginVersion}${pluginVersionSnapshot}"	
+	pluginNeedsOperatingSystemAndArchitecture = false	
+}
+
+dependencies {
+	compile		project(":syncany-lib")
+	compile		project(":syncany-util")	
+
+	compile		"com.dropbox.core:dropbox-core-sdk:1.7.7"
+
+	pluginjar	"com.dropbox.core:dropbox-core-sdk:1.7.7"
+
+	testCompile	project(path: ":syncany-lib", configuration: "tests")      
+	testCompile	project(path: ":syncany-util", configuration: "tests")
+	testCompile	"junit:junit:4.9"
+	testCompile	"org.apache.ftpserver:ftpserver-core:1.0.6"   
+}
+
+apply from: 'core/gradle/gradle/plugins.jar.gradle'
+apply from: 'core/gradle/gradle/plugins.debian.gradle'
