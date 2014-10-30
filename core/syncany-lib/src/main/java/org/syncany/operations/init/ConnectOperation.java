@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,18 +20,20 @@ package org.syncany.operations.init;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
 import org.syncany.config.Config;
 import org.syncany.config.DaemonConfigHelper;
 import org.syncany.config.to.ConfigTO;
-import org.syncany.config.to.ConfigTO.ConnectionTO;
 import org.syncany.config.to.MasterTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.crypto.CipherException;
@@ -54,27 +56,29 @@ import org.syncany.util.Base58;
 /**
  * The connect operation connects to an existing repository at a given remote storage
  * location. Its responsibilities include:
- * 
+ *
  * <ul>
  *   <li>Downloading of the repo file. If it is encrypted, also downloading the master
  *       file to allow decrypting the repo file.</li>
  *   <li>If encrypted: Querying the user for the password and creating the master key using
  *       the password and the master salt.</li>
  *   <li>If encrypted: Decrypting and verifying the repo file.</li>
- *   <li>Creating the local Syncany folder structure in the local directory (.syncany 
+ *   <li>Creating the local Syncany folder structure in the local directory (.syncany
  *       folder and the sub-structure) and copying the repo/master file to it.</li>
- * </ul> 
- *   
+ * </ul>
+ *
  * @author Philipp C. Heckel <philipp.heckel@gmail.com>
  */
 public class ConnectOperation extends AbstractInitOperation {
-	private static final Logger logger = Logger.getLogger(ConnectOperation.class.getSimpleName());		
-	
-	private static final Pattern LINK_PATTERN = Pattern.compile("^syncany://storage/1/(?:(not-encrypted/)(.+)|([^-]+)/(.+))$");
+	private static final Logger logger = Logger.getLogger(ConnectOperation.class.getSimpleName());
+
+	private static final Pattern LINK_PATTERN = Pattern.compile("^syncany://storage/1/(?:(not-encrypted/)([^/]+)/(.+)|([^/]+)/([^/]+)/(.+))$");
 	private static final int LINK_PATTERN_GROUP_NOT_ENCRYPTED_FLAG = 1;
-	private static final int LINK_PATTERN_GROUP_NOT_ENCRYPTED_ENCODED = 2;
-	private static final int LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT = 3;
-	private static final int LINK_PATTERN_GROUP_ENCRYPTED_ENCODED = 4;
+	private static final int LINK_PATTERN_GROUP_NOT_ENCRYPTED_PLUGIN_ENCODED = 2;
+	private static final int LINK_PATTERN_GROUP_NOT_ENCRYPTED_SETTINGS_ENCODED = 3;
+	private static final int LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT = 4;
+	private static final int LINK_PATTERN_GROUP_ENCRYPTED_PLUGIN_ENCODED = 5;
+	private static final int LINK_PATTERN_GROUP_ENCRYPTED_SETTINGS_ENCODED = 6;
 
 	private static final int MAX_RETRY_PASSWORD_COUNT = 3;
 	private int retryPasswordCount = 0;
@@ -111,14 +115,12 @@ public class ConnectOperation extends AbstractInitOperation {
 		}
 
 		// Init plugin and transfer manager
-		plugin = Plugins.get(options.getConfigTO().getConnectionTO().getType(), TransferPlugin.class);
+		plugin = Plugins.get(options.getConfigTO().getTransferSettings().getType(), TransferPlugin.class);
 
-		TransferSettings connection = plugin.createSettings();
+		TransferSettings transferSettings = (TransferSettings) options.getConfigTO().getTransferSettings();
+		transferSettings.setUserInteractionListener(listener);
 
-		connection.init(options.getConfigTO().getConnectionTO().getSettings());
-		connection.setUserInteractionListener(listener);
-
-		transferManager = plugin.createTransferManager(connection, null);
+		transferManager = plugin.createTransferManager(transferSettings, null); // "null" because no config exists yet!
 
 		// Test the repo
 		if (!performRepoTest(transferManager)) {
@@ -206,10 +208,10 @@ public class ConnectOperation extends AbstractInitOperation {
 				result.setAddedToDaemon(false);
 			}
 		}
-		
+
 		result.setResultCode(ConnectResultCode.OK);
 		return result;
-	}		
+	}
 
 	private boolean decryptAndVerifyRepoFile(File tmpRepoFile, SaltedSecretKey masterKey) throws StorageException {
 		try {
@@ -258,58 +260,79 @@ public class ConnectOperation extends AbstractInitOperation {
 
 		String notEncryptedFlag = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_FLAG);
 
-		String plaintext = null;
 		boolean isEncryptedLink = notEncryptedFlag == null;
+		String pluginId = null;
+		String pluginSettingsStr = null;
 
-		if (isEncryptedLink) {
-			String masterKeySaltStr = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT);
-			String ciphertext = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_ENCODED);
-			
-			byte[] masterKeySalt = Base58.decode(masterKeySaltStr);
-			byte[] ciphertextBytes = Base58.decode(ciphertext);
+		try {
+			if (isEncryptedLink) {
+				String masterKeySaltStr = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT);
+				String cipherPluginStr = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_PLUGIN_ENCODED);
+				String cipherSettingsStr = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_SETTINGS_ENCODED);
 
-			boolean retryPassword = true;
+				logger.log(Level.INFO, "- Master salt: " + masterKeySaltStr);
+				logger.log(Level.INFO, "- Encrypted plugin ID: " + cipherPluginStr);
+				logger.log(Level.INFO, "- Encrypted plugin settings: " + cipherSettingsStr);
 
-			while (retryPassword) {
-				// Ask password
-				String masterPassword = getOrAskPassword();
+				byte[] masterKeySalt = Base58.decode(masterKeySaltStr);
+				byte[] cipherPluginBytes = Base58.decode(cipherPluginStr);
+				byte[] cipherSettingsBytes = Base58.decode(cipherSettingsStr);
 
-				// Generate master key
-				SaltedSecretKey masterKey = createMasterKeyFromPassword(masterPassword, masterKeySalt);
-				configTO.setMasterKey(masterKey);
+				boolean retryPassword = true;
 
-				// Decrypt config
-				try {
-					ByteArrayInputStream encryptedStorageConfig = new ByteArrayInputStream(ciphertextBytes);
-					plaintext = new String(CipherUtil.decrypt(encryptedStorageConfig, masterKey));
+				while (retryPassword) {
+					// Ask password
+					String masterPassword = getOrAskPassword();
 
-					retryPassword = false;
+					// Generate master key
+					SaltedSecretKey masterKey = createMasterKeyFromPassword(masterPassword, masterKeySalt);
+					configTO.setMasterKey(masterKey);
+
+					// Decrypt config
+					try {
+						ByteArrayInputStream encryptedPlugin = new ByteArrayInputStream(cipherPluginBytes);
+						ByteArrayInputStream encryptedSettings = new ByteArrayInputStream(cipherSettingsBytes);
+
+						pluginId = new String(CipherUtil.decrypt(encryptedPlugin, masterKey));
+						pluginSettingsStr = IOUtils.toString(new GZIPInputStream(new ByteArrayInputStream(CipherUtil.decrypt(encryptedSettings,
+								masterKey))));
+
+						retryPassword = false;
+					}
+					catch (CipherException e) {
+						retryPassword = askRetryPassword();
+					}
 				}
-				catch (CipherException e) {
-					retryPassword = askRetryPassword();
+
+				if (pluginId == null || pluginSettingsStr == null) {
+					throw new CipherException("Unable to decrypt link.");
 				}
 			}
+			else {
+				String encodedPlugin = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_PLUGIN_ENCODED);
+				String encodedSettings = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_SETTINGS_ENCODED);
 
-			if (plaintext == null) {
-				throw new CipherException("Unable to decrypt link.");
+				pluginId = new String(Base58.decode(encodedPlugin));
+				pluginSettingsStr = IOUtils.toString(new GZIPInputStream(new ByteArrayInputStream(Base58.decode(encodedSettings))));
 			}
+
+			logger.log(Level.INFO, "(Decrypted) link contains: " + pluginId + " -- " + pluginSettingsStr);
 		}
-		else {
-			String encodedPlaintext = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_ENCODED);
-			plaintext = new String(Base58.decode(encodedPlaintext));
+		catch (IOException e) {
+			throw new StorageException("Unable to decompress connection settings: " + e.getMessage());
 		}
 
 		try {
-			Serializer serializer = new Persister();
-			ConnectionTO connectionTO = serializer.read(ConnectionTO.class, plaintext);
-
-			TransferPlugin plugin = Plugins.get(connectionTO.getType(), TransferPlugin.class);
+			TransferPlugin plugin = Plugins.get(pluginId, TransferPlugin.class);
 
 			if (plugin == null) {
-				throw new StorageException("Link contains unknown connection type '" + connectionTO.getType() + "'. Corresponding plugin not found.");
+				throw new StorageException("Link contains unknown connection type '" + pluginId + "'. Corresponding plugin not found.");
 			}
 
-			configTO.setConnectionTO(connectionTO);
+			TransferSettings transferSettings = plugin.createEmptySettings();
+			transferSettings = new Persister().read(transferSettings.getClass(), pluginSettingsStr);
+
+			configTO.setTransferSettings(transferSettings);
 		}
 		catch (Exception e) {
 			throw new StorageException(e);
@@ -329,10 +352,10 @@ public class ConnectOperation extends AbstractInitOperation {
 		}
 		else {
 			logger.log(Level.INFO, "--> NOT OKAY: Invalid target/repo state. Operation cannot be continued.");
-			
+
 			result.setResultCode(ConnectResultCode.NOK_TEST_FAILED);
 			result.setTestResult(testResult);
-			
+
 			return false;
 		}
 	}
