@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.ftp;
+package org.syncany.plugins.dropbox;
 
 import java.util.Map;
 
@@ -28,11 +28,11 @@ import org.syncany.plugins.transfer.TransferSettings;
 /**
  * The FTP connection represents the settings required to connect to an
  * FTP-based storage backend. It can be used to initialize/create an 
- * {@link FtpTransferManager} and is part of the {@link FtpPlugin}.  
+ * {@link DropboxTransferManager} and is part of the {@link DropboxPlugin}.  
  *
  * @author Philipp C. Heckel <philipp.heckel@gmail.com>
  */
-public class FtpTransferSettings extends TransferSettings {
+public class DropboxTransferSettings extends TransferSettings {
 	private String hostname;
 	private String username;
 	private String password;
@@ -99,6 +99,6 @@ public class FtpTransferSettings extends TransferSettings {
 
 	@Override
 	public String toString() {
-		return FtpTransferSettings.class.getSimpleName() + "[hostname=" + hostname + ":" + port + ", username=" + username + ", path=" + path + "]";
+		return DropboxTransferSettings.class.getSimpleName() + "[hostname=" + hostname + ":" + port + ", username=" + username + ", path=" + path + "]";
 	}
 }

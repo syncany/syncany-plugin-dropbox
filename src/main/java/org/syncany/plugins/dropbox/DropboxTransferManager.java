@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.ftp;
+package org.syncany.plugins.dropbox;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -49,9 +49,9 @@ import org.syncany.util.StringUtil;
 
 /**
  * Implements a {@link TransferManager} based on an FTP storage backend for the
- * {@link FtpPlugin}. 
+ * {@link DropboxPlugin}. 
  * 
- * <p>Using an {@link FtpTransferSettings}, the transfer manager is configured and uses 
+ * <p>Using an {@link DropboxTransferSettings}, the transfer manager is configured and uses 
  * a well defined FTP folder to store the Syncany repository data. While repo and
  * master file are stored in the given folder, databases and multichunks are stored
  * in special sub-folders:
@@ -66,16 +66,8 @@ import org.syncany.util.StringUtil;
  * 
  * @author Philipp C. Heckel <philipp.heckel@gmail.com>
  */
-public class FtpTransferManager extends AbstractTransferManager {
-	private static final Logger logger = Logger.getLogger(FtpTransferManager.class.getSimpleName());
-
-	private static final int CONNECT_RETRY_COUNT = 2;
-	private static final int TIMEOUT_DEFAULT = 5000;
-	private static final int TIMEOUT_CONNECT = 5000;
-	private static final int TIMEOUT_DATA = 5000;
-
-	private FTPClient ftp;
-	private boolean ftpIsLoggedIn;
+public class DropboxTransferManager extends AbstractTransferManager {
+	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
 	private String repoPath;
 	private String multichunksPath;
@@ -84,11 +76,8 @@ public class FtpTransferManager extends AbstractTransferManager {
 	private String transactionsPath;
 	private String temporaryPath;
 
-	public FtpTransferManager(FtpTransferSettings connection, Config config) {
+	public DropboxTransferManager(DropboxTransferSettings connection, Config config) {
 		super(connection, config);
-
-		this.ftp = new FTPClient();
-		this.ftpIsLoggedIn = false;
 
 		this.repoPath = connection.getPath().startsWith("/") ? connection.getPath() : "/" + connection.getPath();
 		this.multichunksPath = repoPath + "/multichunks";
@@ -99,8 +88,8 @@ public class FtpTransferManager extends AbstractTransferManager {
 	}
 
 	@Override
-	public FtpTransferSettings getSettings() {
-		return (FtpTransferSettings) super.getSettings();
+	public DropboxTransferSettings getSettings() {
+		return (DropboxTransferSettings) super.getSettings();
 	}
 
 	@Override

@@ -15,35 +15,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.ftp;
+package org.syncany.plugins.dropbox;
 
 import org.syncany.config.Config;
-import org.syncany.plugins.Plugin;
 import org.syncany.plugins.transfer.TransferManager;
 import org.syncany.plugins.transfer.TransferPlugin;
 import org.syncany.plugins.transfer.TransferSettings;
 
-/**
- * Identifies the FTP-based storage {@link Plugin} for Syncany. 
- * 
- * <p>This class implements defines the identifier, name and 
- * version of the plugin. It furthermore allows the instantiation 
- * of a plugin-specific {@link FtpTransferSettings}. 
- * 
- * @author Philipp C. Heckel <philipp.heckel@gmail.com>
- */
-public class FtpPlugin extends TransferPlugin {
-	public FtpPlugin() {
-		super("ftp");
+public class DropboxPlugin extends TransferPlugin {
+	public DropboxPlugin() {
+		super("dropbox");
 	}
 
 	@Override
 	public TransferManager createTransferManager(TransferSettings connection, Config config) {
-		return new FtpTransferManager((FtpTransferSettings) connection, config);
+		return new DropboxTransferManager((DropboxTransferSettings) connection, config);
 	}
 
 	@Override
 	public TransferSettings createSettings() {
-		return new FtpTransferSettings();
+		return new DropboxTransferSettings();
 	}
 }

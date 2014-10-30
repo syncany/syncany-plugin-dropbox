@@ -1,0 +1,49 @@
+language: java
+jdk: openjdk7
+
+env:
+  global:
+  - TERM=dumb
+
+  # FTP credentials
+  - secure: "LAMWFsDclMmCeJXfByzRkTm21l9qfOQXPu/mLz0Kz5Gx7eoSFR4wjFdejkPzAJCMhK43S5/Wo2QCnrbC3hqdRung5m3Gq+/RgokGnQnAOmWUHKNzqiIkUi9+vKTaRl9/gvPHqOXLTmCL/ZhFqglnYmJzntdchkjEZApJ8VZo+Lc="
+  - secure: "RnM0Nt7PBHQHVczDS4zl6zPjAyOyDtmnxjTHFYvg4EwAOmvMjYG7CouIMU65WCGJFIvuE9nKlf9ekm92+csBPDwYRNePUjuBiEBlFOc1gRzWIDjXZjRIk/AD4jxYF/EfZ2ZaQdazaguKXV+yQdv/qMg8oCLDV1f5It7MogAz0zQ="
+  - secure: "R1i+TBMAG/SE9nTbFg35nRbBe9Jkg+KINjWzUZA1dsHPprBGdSl4idKq+ql3R5RI4AH5w6EizDEhANDhskZWjHr7hsGd33sATTy5ZAjhE0TLqJfosVVq+TrK8CUrGhx9ztbF0fWrvcO5qIaUNamTHOBZzlkviHc2j/8o8Bz9GWc="
+  
+branches:
+  only:
+  - master
+  - develop
+
+notifications:
+  email: false
+  irc: chat.freenode.net#syncany
+
+before_install:
+  # Standard Stuff
+  - sudo apt-get update
+  - sudo apt-get install -y -q lftp
+  - lftp -v
+  - mkdir ~/.gradle 2> /dev/null || true
+  - echo "org.gradle.daemon=true" > ~/.gradle/gradle.properties
+
+  # Debian Packaging
+  - sudo apt-get install -y -q dh-make devscripts debhelper bash-completion
+  - gpg --version
+  - debuild --version
+  - perl -v
+
+install:
+  # Disable default travis behavior 'gradle assemble'
+  - ./gradlew -v
+
+script:
+  # Be safe and clean!
+  - ./gradlew clean
+
+  # Build JAR and Debian DEB
+  - ./gradlew pluginJar
+  - ./gradlew pluginDebianDeb  
+
+  # Upload JARs and DEBs
+  - core/gradle/lftp/lftpuploadplugin.sh
