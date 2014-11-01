@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,26 +17,23 @@
  */
 package org.syncany.plugins.dropbox;
 
-import org.syncany.config.Config;
-import org.syncany.plugins.transfer.TransferManager;
+import com.dropbox.core.DbxAppInfo;
+import com.dropbox.core.DbxRequestConfig;
 import org.syncany.plugins.transfer.TransferPlugin;
-import org.syncany.plugins.transfer.TransferSettings;
 
-public class DropboxPlugin extends TransferPlugin {
-    public static final String APP_KEY = "...";
-    public static final String APP_SECRET = "...";
-	
-	public DropboxPlugin() {
+import java.util.Locale;
+
+/**
+ * @author Christian Roth <christian.roth@port17.de>
+ */
+public class DropboxTransferPlugin extends TransferPlugin {
+	private static final String APP_KEY = "6n0xvztavxyymgj";
+	private static final String APP_SECRET = "ef5gk2pc5f5u0zc";
+
+	public static final DbxAppInfo DROPBOX_APP_INFO = new DbxAppInfo(APP_KEY, APP_SECRET);
+	public static final DbxRequestConfig DROPBOX_REQ_CONFIG = new DbxRequestConfig("syncany", Locale.ENGLISH.toString());
+
+	public DropboxTransferPlugin() {
 		super("dropbox");
-	}
-
-	@Override
-	public TransferManager createTransferManager(TransferSettings connection, Config config) {
-		return new DropboxTransferManager((DropboxTransferSettings) connection, config);
-	}
-
-	@Override
-	public TransferSettings createEmptySettings() {
-		return new DropboxTransferSettings();
 	}
 }

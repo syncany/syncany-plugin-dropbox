@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,25 @@
  */
 package org.syncany.plugins.dropbox;
 
+import com.dropbox.core.DbxClient;
+import com.dropbox.core.DbxEntry;
+import com.dropbox.core.DbxException;
+import com.dropbox.core.DbxWriteMode;
+import org.apache.commons.io.FileUtils;
+import org.syncany.config.Config;
+import org.syncany.plugins.transfer.AbstractTransferManager;
+import org.syncany.plugins.transfer.StorageException;
+import org.syncany.plugins.transfer.StorageMoveException;
+import org.syncany.plugins.transfer.TransferManager;
+import org.syncany.plugins.transfer.files.ActionRemoteFile;
+import org.syncany.plugins.transfer.files.DatabaseRemoteFile;
+import org.syncany.plugins.transfer.files.MultichunkRemoteFile;
+import org.syncany.plugins.transfer.files.RemoteFile;
+import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
+import org.syncany.plugins.transfer.files.TempRemoteFile;
+import org.syncany.plugins.transfer.files.TransactionRemoteFile;
+import org.syncany.util.FileUtil;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,122 +48,66 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPFile;
-import org.syncany.config.Config;
-import org.syncany.plugins.transfer.AbstractTransferManager;
-import org.syncany.plugins.transfer.StorageException;
-import org.syncany.plugins.transfer.StorageFileNotFoundException;
-import org.syncany.plugins.transfer.StorageMoveException;
-import org.syncany.plugins.transfer.TransferManager;
-import org.syncany.plugins.transfer.files.ActionRemoteFile;
-import org.syncany.plugins.transfer.files.DatabaseRemoteFile;
-import org.syncany.plugins.transfer.files.MultichunkRemoteFile;
-import org.syncany.plugins.transfer.files.RemoteFile;
-import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
-import org.syncany.plugins.transfer.files.TempRemoteFile;
-import org.syncany.plugins.transfer.files.TransactionRemoteFile;
-import org.syncany.util.StringUtil;
-
 /**
- * Implements a {@link TransferManager} based on an FTP storage backend for the
- * {@link DropboxPlugin}. 
- * 
- * <p>Using an {@link DropboxTransferSettings}, the transfer manager is configured and uses 
- * a well defined FTP folder to store the Syncany repository data. While repo and
+ * Implements a {@link TransferManager} based on an Dropbox storage backend for the
+ * {@link DropboxTransferPlugin}.
+ * <p/>
+ * <p>Using an {@link DropboxTransferSettings}, the transfer manager is configured and uses
+ * a well defined Samba share and folder to store the Syncany repository data. While repo and
  * master file are stored in the given folder, databases and multichunks are stored
  * in special sub-folders:
- * 
+ * <p/>
  * <ul>
- *   <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
- *   <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
+ * <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
+ * <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
  * </ul>
- * 
+ * <p/>
  * <p>All operations are auto-connected, i.e. a connection is automatically
- * established. Connecting is retried a few times before throwing an exception.
- * 
- * @author Philipp C. Heckel <philipp.heckel@gmail.com>
+ * established.
+ *
+ * @author Christian Roth <christian.roth@port17.de>
  */
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
-	private String repoPath;
-	private String multichunksPath;
-	private String databasesPath;
-	private String actionsPath;
-	private String transactionsPath;
-	private String temporaryPath;
+	private final DbxClient client;
+	private final String path;
+	private final String multichunksPath;
+	private final String databasesPath;
+	private final String actionsPath;
+	private final String transactionsPath;
+	private final String tempPath;
 
-	public DropboxTransferManager(DropboxTransferSettings connection, Config config) {
-		super(connection, config);
+	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
+		super(settings, config);
 
-		this.repoPath = connection.getPath().startsWith("/") ? connection.getPath() : "/" + connection.getPath();
-		this.multichunksPath = repoPath + "/multichunks";
-		this.databasesPath = repoPath + "/databases";
-		this.actionsPath = repoPath + "/actions";
-		this.transactionsPath = repoPath + "/transactions";
-		this.temporaryPath = repoPath + "/temporary";
-	}
+		this.path = "/" + settings.getPath().getPath();
+		this.multichunksPath = new File(this.path, "/multichunks/").getPath();
+		this.databasesPath = new File(this.path, "/databases/").getPath();
+		this.actionsPath = new File(this.path, "/actions/").getPath();
+		this.transactionsPath = new File(this.path, "/transactions/").getPath();
+		this.tempPath = new File(this.path, "/temporary/").getPath();
 
-	@Override
-	public DropboxTransferSettings getSettings() {
-		return (DropboxTransferSettings) super.getSettings();
+		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
 
 	@Override
 	public void connect() throws StorageException {
-		for (int i = 0; i < CONNECT_RETRY_COUNT; i++) {
-			try {
-				if (ftp.isConnected() && ftpIsLoggedIn) {
-					logger.log(Level.INFO, "FTP client already connected. Skipping connect().");
-					return;
-				}
-
-				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "FTP client connecting to {0}:{1} ...", new Object[] { getSettings().getHostname(),
-							getSettings().getPort() });
-				}
-
-				ftp.setConnectTimeout(TIMEOUT_CONNECT);
-				ftp.setDataTimeout(TIMEOUT_DATA);
-				ftp.setDefaultTimeout(TIMEOUT_DEFAULT);
-
-				ftp.connect(getSettings().getHostname(), getSettings().getPort());
-
-				if (!ftp.login(getSettings().getUsername(), getSettings().getPassword())) {
-					throw new StorageException("Invalid FTP login credentials. Cannot login.");
-				}
-
-				ftp.enterLocalPassiveMode();
-				ftp.setFileType(FTPClient.BINARY_FILE_TYPE); // Important !!!
-
-				ftpIsLoggedIn = true;
-				return; // no loop!
-			}
-			catch (Exception ex) {
-				if (i == CONNECT_RETRY_COUNT - 1) {
-					logger.log(Level.WARNING, "FTP client connection failed. Retrying failed.", ex);
-
-					ftpIsLoggedIn = false;
-					throw new StorageException(ex);
-				}
-				else {
-					logger.log(Level.WARNING, "FTP client connection failed. Retrying " + (i + 1) + "/" + CONNECT_RETRY_COUNT + " ...", ex);
-				}
-			}
+		// make a connect
+		try {
+			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[] { this.client.getAccountInfo().displayName });
+		}
+		catch (DbxException.InvalidAccessToken e) {
+			throw new StorageException("The accessToken in use is invalid", e);
+		}
+		catch (Exception e) {
+			throw new StorageException("Unable to connect to dropbox", e);
 		}
 	}
 
 	@Override
 	public void disconnect() {
-		try {
-			ftp.disconnect();
-			ftpIsLoggedIn = false;
-		}
-		catch (Exception ex) {
-			// Nothing
-		}
+		// Nothing
 	}
 
 	@Override
@@ -152,95 +115,83 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		connect();
 
 		try {
-			if (!testRepoFileExists() && createIfRequired) {
-				ftp.mkd(repoPath);
+			if (!testTargetExists() && createIfRequired) {
+				this.client.createFolder(this.path);
 			}
 
-			ftp.mkd(multichunksPath);
-			ftp.mkd(databasesPath);
-			ftp.mkd(actionsPath);
-			ftp.mkd(transactionsPath);
-			ftp.mkd(temporaryPath);
+			this.client.createFolder(this.multichunksPath);
+			this.client.createFolder(this.databasesPath);
+			this.client.createFolder(this.actionsPath);
+			this.client.createFolder(this.transactionsPath);
+			this.client.createFolder(this.tempPath);
 		}
-		catch (IOException e) {
-			forceFtpDisconnect();
-			throw new StorageException("Cannot create directory " + multichunksPath + ", or " + databasesPath, e);
+		catch (DbxException e) {
+			throw new StorageException("init: Cannot create required directories", e);
+		}
+		finally {
+			disconnect();
 		}
 	}
 
 	@Override
 	public void download(RemoteFile remoteFile, File localFile) throws StorageException {
-		connect();
-
 		String remotePath = getRemoteFile(remoteFile);
 
-		try {
-			// Download file
-			File tempFile = createTempFile(localFile.getName());
-			OutputStream tempFOS = new FileOutputStream(tempFile);
+		if (!remoteFile.getName().equals(".") && !remoteFile.getName().equals("..")) {
+			try {
+				// Download file
+				File tempFile = createTempFile(localFile.getName());
+				OutputStream tempFOS = new FileOutputStream(tempFile);
 
-			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "FTP: Downloading {0} to temp file {1}", new Object[] { remotePath, tempFile });
+				if (logger.isLoggable(Level.INFO)) {
+					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[] { remotePath, tempFile });
+				}
+
+				this.client.getFile(remotePath, null, tempFOS);
+
+				tempFOS.close();
+
+				// Move file
+				if (logger.isLoggable(Level.INFO)) {
+					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempFile, localFile });
+				}
+
+				localFile.delete();
+				FileUtils.moveFile(tempFile, localFile);
+				tempFile.delete();
 			}
-
-			boolean success = ftp.retrieveFile(remotePath, tempFOS);
-
-			if (!success) {
-				throw new StorageFileNotFoundException("Could not find remoteFile to download " + remoteFile.getName());
+			catch (DbxException | IOException ex) {
+				logger.log(Level.SEVERE, "Error while downloading file " + remoteFile.getName(), ex);
+				throw new StorageException(ex);
 			}
-
-			tempFOS.close();
-
-			// Move file
-			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "FTP: Renaming temp file {0} to file {1}", new Object[] { tempFile, localFile });
-			}
-
-			localFile.delete();
-			FileUtils.moveFile(tempFile, localFile);
-			tempFile.delete();
-		}
-		catch (IOException ex) {
-			forceFtpDisconnect();
-
-			logger.log(Level.SEVERE, "Error while downloading file " + remoteFile.getName(), ex);
-			throw new StorageException(ex);
 		}
 	}
 
 	@Override
 	public void upload(File localFile, RemoteFile remoteFile) throws StorageException {
-		connect();
-
 		String remotePath = getRemoteFile(remoteFile);
-		String tempRemotePath = repoPath + "/temp-" + remoteFile.getName();
+		String tempRemotePath = this.path + "/temp-" + remoteFile.getName();
 
 		try {
 			// Upload to temp file
 			InputStream fileFIS = new FileInputStream(localFile);
 
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "FTP: Uploading {0} to temp file {1}", new Object[] { localFile, tempRemotePath });
+				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[] { localFile, tempRemotePath });
 			}
 
-			ftp.setFileType(FTPClient.BINARY_FILE_TYPE); // Important !!!
-
-			if (!ftp.storeFile(tempRemotePath, fileFIS)) {
-				throw new IOException("Error uploading file " + remoteFile.getName());
-			}
+			this.client.uploadFile(tempRemotePath, DbxWriteMode.add(), localFile.length(), fileFIS);
 
 			fileFIS.close();
 
 			// Move
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "FTP: Renaming temp file {0} to file {1}", new Object[] { tempRemotePath, remotePath });
+				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempRemotePath, remotePath });
 			}
 
-			ftp.rename(tempRemotePath, remotePath);
+			this.client.move(tempRemotePath, remotePath);
 		}
-		catch (IOException ex) {
-			forceFtpDisconnect();
-
+		catch (DbxException | IOException ex) {
 			logger.log(Level.SEVERE, "Could not upload file " + localFile + " to " + remoteFile.getName(), ex);
 			throw new StorageException(ex);
 		}
@@ -248,27 +199,13 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	@Override
 	public boolean delete(RemoteFile remoteFile) throws StorageException {
-		connect();
-
 		String remotePath = getRemoteFile(remoteFile);
 
 		try {
-			logger.log(Level.INFO, "FTP: Deleting file " + remotePath + " ...");
-
-			// Try deleting; returns 'false' if file does not exist
-			if (ftp.deleteFile(remotePath)) {
-				return true;
-			}
-
-			// Double check if above command returned 'false' (if non-existent file)
-			String[] fileList = ftp.listNames(remotePath);
-			boolean remotePathDeleted = fileList != null && fileList.length == 0;
-
-			return remotePathDeleted;
+			this.client.delete(remotePath);
+			return true;
 		}
-		catch (IOException ex) {
-			forceFtpDisconnect();
-
+		catch (DbxException ex) {
 			logger.log(Level.SEVERE, "Could not delete file " + remoteFile.getName(), ex);
 			throw new StorageException(ex);
 		}
@@ -276,67 +213,47 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	@Override
 	public void move(RemoteFile sourceFile, RemoteFile targetFile) throws StorageException {
-		connect();
-
-		String sourcePath = getRemoteFile(sourceFile);
-		String targetPath = getRemoteFile(targetFile);
+		String sourceRemotePath = getRemoteFile(sourceFile);
+		String targetRemotePath = getRemoteFile(targetFile);
 
 		try {
-			logger.log(Level.INFO, "FTP: Renaming " + sourceFile + " to " + targetFile);
-
-			boolean success = ftp.rename(sourcePath, targetPath);
-			if (!success) {
-				logger.log(Level.INFO, "FTP: SourceFile does not exist: " + sourceFile);
-				throw new StorageMoveException("Could not find sourceFile to move " + sourceFile.getName());
-			}
+			this.client.move(sourceRemotePath, targetRemotePath);
 		}
-		catch (IOException e) {
-			forceFtpDisconnect();
-			logger.log(Level.SEVERE, "Could not rename" + sourceFile + " to " + targetFile, e);
-			throw new StorageException(e);
+		catch (DbxException e) {
+			logger.log(Level.SEVERE, "Could not rename file " + sourceRemotePath + " to " + targetRemotePath, e);
+			throw new StorageMoveException("Could not rename file " + sourceRemotePath + " to " + targetRemotePath, e);
 		}
-
 	}
 
 	@Override
 	public <T extends RemoteFile> Map<String, T> list(Class<T> remoteFileClass) throws StorageException {
-		connect();
-
 		try {
 			// List folder
 			String remoteFilePath = getRemoteFilePath(remoteFileClass);
-			FTPFile[] ftpFiles = ftp.listFiles(remoteFilePath + "/");
+
+			DbxEntry.WithChildren listing = this.client.getMetadataWithChildren(remoteFilePath);
 
 			// Create RemoteFile objects
 			Map<String, T> remoteFiles = new HashMap<String, T>();
 
-			for (FTPFile file : ftpFiles) {
+			for (DbxEntry child : listing.children) {
 				try {
-					T remoteFile = RemoteFile.createRemoteFile(file.getName(), remoteFileClass);
-					remoteFiles.put(file.getName(), remoteFile);
+					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
+					remoteFiles.put(child.name, remoteFile);
 				}
 				catch (Exception e) {
-					logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for file " + file
+					logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for file " + child.name
 							+ "; maybe invalid file name pattern. Ignoring file.");
 				}
 			}
 
 			return remoteFiles;
 		}
-		catch (IOException ex) {
-			forceFtpDisconnect();
+		catch (DbxException ex) {
+			disconnect();
 
-			logger.log(Level.SEVERE, "Unable to list FTP directory.", ex);
+			logger.log(Level.SEVERE, "Unable to list Dropbox directory.", ex);
 			throw new StorageException(ex);
-		}
-	}
-
-	private void forceFtpDisconnect() {
-		try {
-			ftp.disconnect();
-		}
-		catch (IOException e) {
-			// Nothing
 		}
 	}
 
@@ -358,38 +275,34 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			return transactionsPath;
 		}
 		else if (remoteFile.equals(TempRemoteFile.class)) {
-			return temporaryPath;
+			return tempPath;
 		}
 		else {
-			return repoPath;
+			return path;
 		}
 	}
 
 	@Override
 	public boolean testTargetCanWrite() {
 		try {
-			if (ftp.changeWorkingDirectory(repoPath)) {
-				String tempRemoteFilePath = repoPath + "/syncany-write-test";
+			if (testTargetExists()) {
+				String tempRemoteFile = this.path + "/syncany-write-test";
+				File tempFile = File.createTempFile("syncany-write-test", "tmp");
 
-				ftp.setFileType(FTPClient.BINARY_FILE_TYPE); // Important !!!
+				this.client.uploadFile(tempRemoteFile, DbxWriteMode.add(), 0, new ByteArrayInputStream(new byte[0]));
+				this.client.delete(tempRemoteFile);
 
-				if (ftp.storeFile(tempRemoteFilePath, new ByteArrayInputStream(new byte[] { 0x01, 0x02, 0x03 }))) {
-					ftp.deleteFile(tempRemoteFilePath);
+				tempFile.delete();
 
-					logger.log(Level.INFO, "testTargetCanWrite: Can write, test file created/deleted successfully.");
-					return true;
-				}
-				else {
-					logger.log(Level.INFO, "testTargetCanWrite: Can NOT write, target does not exist.");
-					return false;
-				}
+				logger.log(Level.INFO, "testTargetCanWrite: Can write, test file created/deleted successfully.");
+				return true;
 			}
 			else {
 				logger.log(Level.INFO, "testTargetCanWrite: Can NOT write, target does not exist.");
 				return false;
 			}
 		}
-		catch (Exception e) {
+		catch (DbxException | IOException e) {
 			logger.log(Level.INFO, "testTargetCanWrite: Can NOT write to target.", e);
 			return false;
 		}
@@ -398,45 +311,47 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetExists() {
 		try {
-			boolean targetExists = ftp.changeWorkingDirectory(repoPath);
+			DbxEntry metadata = this.client.getMetadata(this.path);
 
-			if (targetExists) {
-				logger.log(Level.INFO, "testTargetExists: Target exists. Chdir successful.");
+			if (metadata.isFolder()) {
+				logger.log(Level.INFO, "testTargetExists: Target does exist.");
 				return true;
 			}
 			else {
-				logger.log(Level.INFO, "testTargetExists: Target does NOT exist. Chdir not successful.");
+				logger.log(Level.INFO, "testTargetExists: Target does NOT exist.");
 				return false;
 			}
 		}
-		catch (Exception e) {
-			logger.log(Level.INFO, "testTargetExists: Target does NOT exist. Chdir threw exception.", e);
+		catch (DbxException e) {
+			logger.log(Level.WARNING, "testTargetExists: Target does NOT exist, error occurred.", e);
 			return false;
 		}
 	}
 
 	@Override
 	public boolean testTargetCanCreate() {
+		// Find parent path
+		String repoPathNoSlash = FileUtil.removeTrailingSlash(this.path);
+		int repoPathLastSlash = repoPathNoSlash.lastIndexOf("/");
+		String parentPath = (repoPathLastSlash > 0) ? repoPathNoSlash.substring(0, repoPathLastSlash) : "/";
+
+		// Test parent path permissions
 		try {
-			if (testTargetExists()) {
-				logger.log(Level.INFO, "testTargetCanCreate: Target already exists, so 'can create' test successful.");
+			DbxEntry metadata = this.client.getMetadata(parentPath);
+
+			// our app has read/write for EVERY folder inside a dropbox. as long as it exists, we can write in it
+			if (metadata.isFolder()) {
+				logger.log(Level.INFO, "testTargetCanCreate: Can create target at " + parentPath);
 				return true;
 			}
 			else {
-				if (ftp.makeDirectory(repoPath)) {
-					ftp.removeDirectory(repoPath);
+				logger.log(Level.INFO, "testTargetCanCreate: Can NOT create target (parent does not exist)");
 
-					logger.log(Level.INFO, "testTargetCanCreate: Target can be created (test-created successfully).");
-					return true;
-				}
-				else {
-					logger.log(Level.INFO, "testTargetCanCreate: Target can NOT be created. Test creation failed.");
-					return false;
-				}
+				return false;
 			}
 		}
-		catch (Exception e) {
-			logger.log(Level.INFO, "testTargetCanCreate: Target can NOT be created.", e);
+		catch (DbxException e) {
+			logger.log(Level.INFO, "testTargetCanCreate: Can NOT create target at " + parentPath, e);
 			return false;
 		}
 	}
@@ -444,36 +359,21 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testRepoFileExists() {
 		try {
-			SyncanyRemoteFile repoFile = new SyncanyRemoteFile();
-			String repoFilePath = getRemoteFile(repoFile);
-			
-			logger.log(Level.INFO, "- DEBUG listNames(" + repoFilePath + "): " + StringUtil.join(ftp.listNames(repoFilePath), ", "));
-			logger.log(Level.INFO, "- DEBUG listFiles(" + repoFilePath + "): " + StringUtil.join(ftp.listFiles(repoFilePath), ", "));
-			
-			String repoFileParentPath = (repoFilePath.indexOf("/") != -1) ? repoFilePath.substring(0, repoFilePath.lastIndexOf("/")) : "";
-			FTPFile[] listRepoFile = ftp.listFiles(repoFileParentPath);
+			String repoFilePath = getRemoteFile(new SyncanyRemoteFile());
+			DbxEntry metadata = this.client.getMetadata(repoFilePath);
 
-			if (listRepoFile != null) {
-				for (FTPFile ftpFile : listRepoFile) {
-					if (ftpFile.getName().equals(repoFile.getName())) {
-
-						logger.log(Level.INFO, "testRepoFileExists: Repo file exists, list(repo) contained 'syncany' file.");
-						return true;
-					}
-				}
-				
-				logger.log(Level.INFO, "testRepoFileExists: Repo file DOES NOT exist: list(repo) DID NOT contain 'syncany' file:\n" + StringUtil.join(listRepoFile, "\n"));
-				return false;				
+			if (metadata != null && metadata.isFile()) {
+				logger.log(Level.INFO, "testRepoFileExists: Repo file exists at " + repoFilePath);
+				return true;
 			}
 			else {
-				logger.log(Level.INFO, "testRepoFileExists: Repo file DOES NOT exist: list(repo) was NULL.");
+				logger.log(Level.INFO, "testRepoFileExists: Repo file DOES NOT exist at " + repoFilePath);
 				return false;
 			}
 		}
 		catch (Exception e) {
-			logger.log(Level.INFO, "testRepoFileExists: Target does NOT exist. Chdir threw exception.", e);
+			logger.log(Level.INFO, "testRepoFileExists: Exception when trying to check repo file existence.", e);
 			return false;
 		}
 	}
-
 }

@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,77 +17,76 @@
  */
 package org.syncany.plugins.dropbox;
 
-import java.util.Map;
-
+import com.dropbox.core.DbxClient;
+import com.dropbox.core.DbxException;
+import com.dropbox.core.DbxWebAuthNoRedirect;
 import org.simpleframework.xml.Element;
-import org.syncany.plugins.transfer.PluginOptionCallback;
-import org.syncany.plugins.transfer.Setup;
-import org.syncany.plugins.transfer.StorageException;
+import org.syncany.plugins.Encrypted;
+import org.syncany.plugins.PluginOptionCallback;
+import org.syncany.plugins.PluginOptionConverter;
+import org.syncany.plugins.Setup;
 import org.syncany.plugins.transfer.TransferSettings;
 
+import java.io.File;
+
+/**
+ * @author Christian Roth <christian.roth@port17.de>
+ */
 public class DropboxTransferSettings extends TransferSettings {
-	@Element(name = "authToken", required = true)
-	@Setup(callback = DropboxAuthPluginOptionCallback.class)
-	private String authToken;
-	
-	private String hostname;
-	private String username;
-	private String password;
-	private String path;
-	private int port;
 
-	public String getHostname() {
-		return hostname;
+	private static DbxWebAuthNoRedirect webAuth;
+
+	@Element(name = "accessToken", required = true)
+	@Encrypted
+	@Setup(order = 1, callback = DropboxAuthPluginOptionCallback.class, converter = DropboxAuthPluginOptionConverter.class)
+	public String accessToken;
+
+	@Element(name = "path", required = true)
+	@Setup(order = 2, description = "Path relative to dropbox root")
+	public File path;
+
+	public String getAccessToken() {
+		return accessToken;
 	}
 
-	public void setHostname(String hostname) {
-		this.hostname = hostname;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
-	public String getPath() {
+	public File getPath() {
 		return path;
 	}
 
-	public void setPath(String path) {
-		this.path = path;
-	}
-
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(int port) {
-		this.port = port;
-	}
-
-	public String getUsername() {
-		return username;
-	}
-
-	public void setUsername(String username) {
-		this.username = username;
-	}
-
-	@Override
-	public String toString() {
-		return DropboxTransferSettings.class.getSimpleName() + "[hostname=" + hostname + ":" + port + ", username=" + username + ", path=" + path + "]";
-	}
-	
-	private class DropboxAuthPluginOptionCallback implements PluginOptionCallback {
+	public static class DropboxAuthPluginOptionCallback implements PluginOptionCallback {
 
 		@Override
 		public String preQueryCallback() {
-			// TODO Auto-generated method stub
-			return null;
+			webAuth = new DbxWebAuthNoRedirect(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, DropboxTransferPlugin.DROPBOX_APP_INFO);
+			String authorizeUrl = webAuth.start();
+
+			return String.format("Please open \n  %s\nto obtain an access token for your dropbox account", authorizeUrl);
 		}
-		
+
+		@Override
+		public String postQueryCallback(String optionValue) {
+			try {
+				DbxClient client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, optionValue);
+				return String.format("Linked with %s's account", client.getAccountInfo().displayName);
+			}
+			catch (DbxException e) {
+				e.printStackTrace();
+				throw new RuntimeException("Error requesting dropbox data: " + e.getMessage());
+			}
+		}
+
+	}
+
+	public static class DropboxAuthPluginOptionConverter implements PluginOptionConverter {
+
+		@Override
+		public String convert(String input) {
+			try {
+				return webAuth.finish(input).accessToken;
+			}
+			catch (DbxException e) {
+				throw new RuntimeException("Unable to extract oauth token: " + e.getMessage());
+			}
+		}
 	}
 }
