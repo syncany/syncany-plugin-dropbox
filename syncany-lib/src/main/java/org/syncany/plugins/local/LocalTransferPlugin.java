@@ -17,11 +17,10 @@
  */
 package org.syncany.plugins.local;
 
-import org.syncany.config.Config;
 import org.syncany.plugins.Plugin;
-import org.syncany.plugins.transfer.StorageException;
+import org.syncany.plugins.transfer.PluginManager;
+import org.syncany.plugins.transfer.PluginSettings;
 import org.syncany.plugins.transfer.TransferPlugin;
-import org.syncany.plugins.transfer.TransferSettings;
 
 /**
  * Identifies the local storage {@link Plugin} for Syncany.
@@ -39,15 +38,5 @@ import org.syncany.plugins.transfer.TransferSettings;
 public class LocalTransferPlugin extends TransferPlugin {
 	public LocalTransferPlugin() {
 		super("local");
-	}
-
-	@Override
-	public LocalTransferSettings createEmptySettings() throws StorageException {
-		return new LocalTransferSettings();
-	}
-
-	@Override
-	public LocalTransferManager createTransferManager(TransferSettings transferSettings, Config config) throws StorageException {
-		return new LocalTransferManager((LocalTransferSettings) transferSettings, config);
 	}
 }

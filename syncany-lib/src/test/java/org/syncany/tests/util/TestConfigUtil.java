@@ -236,7 +236,7 @@ public class TestConfigUtil {
 		// ConnectionTO transferSettings = new ConnectionTO();
 		// transferSettings.setType("local");
 		// transferSettings.setSettings(localConnectionSettings);
-		LocalTransferSettings transferSettings = (LocalTransferSettings) Plugins.get("local", TransferPlugin.class).createEmptySettings();
+		LocalTransferSettings transferSettings = Plugins.get("local", TransferPlugin.class).createEmptySettings();
 		transferSettings.setPath(tempRepoDir);
 
 		configTO.setTransferSettings(transferSettings);
@@ -259,7 +259,7 @@ public class TestConfigUtil {
 		InitOperationOptions initOperationOptions = createTestInitOperationOptions(machineName);
 		// createTestInitOperationOptions always returns LocalTransferSettings
 		File tempRpoDir = ((LocalTransferSettings) initOperationOptions.getConfigTO().getTransferSettings()).getPath();
-		UnreliableLocalTransferSettings transferSettings = (UnreliableLocalTransferSettings) Plugins.get("unreliable_local", TransferPlugin.class).createEmptySettings();
+		UnreliableLocalTransferSettings transferSettings = Plugins.get("unreliable_local", TransferPlugin.class).createEmptySettings();
 		transferSettings.setPath(tempRpoDir);
 		transferSettings.setFailingOperationPatterns(failingOperationPatterns);
 
@@ -270,7 +270,7 @@ public class TestConfigUtil {
 
 	public static TransferSettings createTestLocalConnection() throws Exception {
 		TransferPlugin plugin = Plugins.get("local", TransferPlugin.class);
-		LocalTransferSettings conn = (LocalTransferSettings) plugin.createEmptySettings();
+		LocalTransferSettings conn = plugin.createEmptySettings();
 
 		File tempRepoDir = TestFileUtil.createTempDirectoryInSystemTemp(createUniqueName("repo", conn));
 		conn.setPath(tempRepoDir);
@@ -293,8 +293,7 @@ public class TestConfigUtil {
 
 	public static UnreliableLocalTransferSettings createTestUnreliableLocalConnectionWithoutInit(UnreliableLocalPlugin unreliableLocalPlugin,
 			List<String> failingOperationPatterns) throws Exception {
-		
-		UnreliableLocalTransferSettings unreliableLocalConnection = (UnreliableLocalTransferSettings) unreliableLocalPlugin.createEmptySettings();
+		UnreliableLocalTransferSettings unreliableLocalConnection = unreliableLocalPlugin.createEmptySettings();
 
 		File tempRepoDir = TestFileUtil.createTempDirectoryInSystemTemp(createUniqueName("repo", new Random().nextFloat()));
 

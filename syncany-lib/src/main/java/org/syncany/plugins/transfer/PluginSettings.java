@@ -15,28 +15,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.raid0;
+package org.syncany.plugins.transfer;
 
-import org.syncany.config.Config;
-import org.syncany.plugins.transfer.StorageException;
-import org.syncany.plugins.transfer.TransferPlugin;
-import org.syncany.plugins.transfer.TransferSettings;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
+ * Use this annotation to link a {@link org.syncany.plugins.transfer.TransferSettings} class with
+ * a {@link org.syncany.plugins.transfer.TransferPlugin}.
+ *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class Raid0TransferPlugin extends TransferPlugin {
-	public Raid0TransferPlugin() {
-		super("raid0");
-	}
 
-	@Override
-	public Raid0TransferSettings createEmptySettings() throws StorageException {
-		return new Raid0TransferSettings();
-	}
-
-	@Override
-	public Raid0TransferManager createTransferManager(TransferSettings transferSettings, Config config) throws StorageException {
-		return new Raid0TransferManager((Raid0TransferSettings) transferSettings, config);
-	}
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PluginSettings {
+	Class<? extends TransferSettings> value();
 }

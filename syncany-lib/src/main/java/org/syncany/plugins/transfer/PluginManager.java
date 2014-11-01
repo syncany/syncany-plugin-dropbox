@@ -17,18 +17,20 @@
  */
 package org.syncany.plugins.transfer;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
- * Option callbacks are called during initialization and before the 
- * corresponding setting is queried.
+ * Use this annotation to link a {@link org.syncany.plugins.transfer.TransferManager} class with
+ * a {@link org.syncany.plugins.transfer.TransferPlugin}.
  *
- * @see org.syncany.cli.init.PluginOptions
  * @author Christian Roth <christian.roth@port17.de>
  */
-public interface PluginOptionCallback {
-	/**
-	 * Called before a setting value is queried.
-	 *
-	 * @return The message to display.
-	 */
-	public String preQueryCallback();
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PluginManager {
+	Class<? extends TransferManager> value();
 }

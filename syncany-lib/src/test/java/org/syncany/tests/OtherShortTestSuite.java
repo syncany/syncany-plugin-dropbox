@@ -32,18 +32,8 @@ import org.syncany.tests.crypto.CipherSessionTest;
 import org.syncany.tests.crypto.CipherSpecsTest;
 import org.syncany.tests.crypto.CipherUtilTest;
 import org.syncany.tests.crypto.MultiCipherStreamsTest;
-import org.syncany.tests.operations.CleanupOperationTest;
-import org.syncany.tests.operations.ConnectOperationTest;
-import org.syncany.tests.operations.FileSystemActionComparatorTest;
-import org.syncany.tests.operations.FileSystemActionReconciliatorTest;
-import org.syncany.tests.operations.IndexerTest;
-import org.syncany.tests.operations.InitOperationTest;
-import org.syncany.tests.operations.NotificationListenerTest;
-import org.syncany.tests.operations.OperationPerformanceTest;
-import org.syncany.tests.operations.PluginOperationTest;
-import org.syncany.tests.operations.RecursiveWatcherTest;
-import org.syncany.tests.operations.StatusOperationTest;
-import org.syncany.tests.operations.SyncUpOperationTest;
+import org.syncany.tests.operations.*;
+import org.syncany.tests.plugins.PluginOptionsTest;
 import org.syncany.tests.plugins.PluginsTest;
 import org.syncany.tests.plugins.TransferSettingsTest;
 import org.syncany.tests.plugins.local.LocalTransferManagerPluginTest;
@@ -75,6 +65,7 @@ import org.syncany.tests.util.SqlRunnerTest;
 		UploadInterruptedTest.class,
 		CleanupInterruptedTest.class,
 		TransferSettingsTest.class,
+		PluginOptionsTest.class,
 
 		// Operations
 		CleanupOperationTest.class,

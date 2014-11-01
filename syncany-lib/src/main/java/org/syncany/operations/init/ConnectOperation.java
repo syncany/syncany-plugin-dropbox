@@ -47,6 +47,7 @@ import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageTestResult;
 import org.syncany.plugins.transfer.TransferManager;
 import org.syncany.plugins.transfer.TransferPlugin;
+import org.syncany.plugins.transfer.TransferPluginUtil;
 import org.syncany.plugins.transfer.TransferSettings;
 import org.syncany.plugins.transfer.files.MasterRemoteFile;
 import org.syncany.plugins.transfer.files.RemoteFile;
@@ -262,7 +263,7 @@ public class ConnectOperation extends AbstractInitOperation {
 
 		boolean isEncryptedLink = notEncryptedFlag == null;
 		String pluginId = null;
-		String pluginSettingsStr = null;
+		String pluginSettings = null;
 
 		try {
 			if (isEncryptedLink) {
@@ -294,7 +295,7 @@ public class ConnectOperation extends AbstractInitOperation {
 						ByteArrayInputStream encryptedSettings = new ByteArrayInputStream(cipherSettingsBytes);
 
 						pluginId = new String(CipherUtil.decrypt(encryptedPlugin, masterKey));
-						pluginSettingsStr = IOUtils.toString(new GZIPInputStream(new ByteArrayInputStream(CipherUtil.decrypt(encryptedSettings,
+						pluginSettings = IOUtils.toString(new GZIPInputStream(new ByteArrayInputStream(CipherUtil.decrypt(encryptedSettings,
 								masterKey))));
 
 						retryPassword = false;
@@ -304,7 +305,7 @@ public class ConnectOperation extends AbstractInitOperation {
 					}
 				}
 
-				if (pluginId == null || pluginSettingsStr == null) {
+				if (pluginId == null || pluginSettings == null) {
 					throw new CipherException("Unable to decrypt link.");
 				}
 			}
@@ -313,10 +314,10 @@ public class ConnectOperation extends AbstractInitOperation {
 				String encodedSettings = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_SETTINGS_ENCODED);
 
 				pluginId = new String(Base58.decode(encodedPlugin));
-				pluginSettingsStr = IOUtils.toString(new GZIPInputStream(new ByteArrayInputStream(Base58.decode(encodedSettings))));
+				pluginSettings = IOUtils.toString(new GZIPInputStream(new ByteArrayInputStream(Base58.decode(encodedSettings))));
 			}
 
-			logger.log(Level.INFO, "(Decrypted) link contains: " + pluginId + " -- " + pluginSettingsStr);
+			logger.log(Level.INFO, "(Decrypted) link contains: " + pluginId + " -- " + pluginSettings);
 		}
 		catch (IOException e) {
 			throw new StorageException("Unable to decompress connection settings: " + e.getMessage());
@@ -329,8 +330,8 @@ public class ConnectOperation extends AbstractInitOperation {
 				throw new StorageException("Link contains unknown connection type '" + pluginId + "'. Corresponding plugin not found.");
 			}
 
-			TransferSettings transferSettings = plugin.createEmptySettings();
-			transferSettings = new Persister().read(transferSettings.getClass(), pluginSettingsStr);
+			Class<? extends TransferSettings> pluginTransferSettingsClass = TransferPluginUtil.getTransferSettingsClass(plugin.getClass());
+			TransferSettings transferSettings = new Persister().read(pluginTransferSettingsClass, pluginSettings);
 
 			configTO.setTransferSettings(transferSettings);
 		}

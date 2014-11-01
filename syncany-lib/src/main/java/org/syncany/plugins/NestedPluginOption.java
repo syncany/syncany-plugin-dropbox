@@ -15,21 +15,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.transfer;
+package org.syncany.plugins;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.reflect.Field;
+import java.lang.reflect.Type;
+import java.util.List;
 
 /**
- * Annotating a field with {@link org.syncany.plugins.transfer.Encrypted} implies that the field's value shell be stored
- * encrypted in the xml representation. Recommended when storing login credentials.
- *
+ * This class represents the a 
+ * 
  * @author Christian Roth <christian.roth@port17.de>
  */
-@Target(ElementType.FIELD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Encrypted {
-	// empty
+public class NestedPluginOption extends PluginOption {
+	private final List<PluginOption> options;
+
+	public NestedPluginOption(Field field, String name, String description, Type type, boolean encrypted, boolean sensitive, boolean required,
+			Class<? extends PluginOptionCallback> callback, List<PluginOption> nestedOptions) {
+
+		super(field, name, description, type, encrypted, sensitive, required, callback);
+		this.options = nestedOptions;
+	}
+
+	public List<PluginOption> getOptions() {
+		return options;
+	}
 }
