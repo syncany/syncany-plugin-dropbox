@@ -15,20 +15,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.tests.cli;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
-import java.util.List;
+package org.syncany.tests.plugins;
 
 import org.junit.Test;
-import org.syncany.cli.init.NestedPluginOption;
-import org.syncany.cli.init.PluginOption;
-import org.syncany.cli.init.PluginOptions;
+import org.syncany.plugins.NestedPluginOption;
+import org.syncany.plugins.PluginOption;
+import org.syncany.plugins.PluginOptions;
 import org.syncany.plugins.dummy.DummyTransferSettings;
 import org.syncany.plugins.transfer.TransferSettings;
 import org.syncany.util.ReflectionUtil;
+
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class PluginOptionsTest {
 

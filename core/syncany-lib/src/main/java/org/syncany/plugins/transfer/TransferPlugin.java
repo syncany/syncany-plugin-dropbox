@@ -17,8 +17,13 @@
  */
 package org.syncany.plugins.transfer;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 import org.syncany.config.Config;
 import org.syncany.plugins.Plugin;
+import org.syncany.plugins.transfer.files.RemoteFile;
+import org.syncany.util.ReflectionUtil;
 
 /**
  * The transfer plugin is a special plugin responsible for transferring files
@@ -38,6 +43,72 @@ public abstract class TransferPlugin extends Plugin {
 		super(pluginId);
 	}
 
-	public abstract TransferSettings createEmptySettings() throws StorageException;
-	public abstract TransferManager createTransferManager(TransferSettings transferSettings, Config config) throws StorageException;
+	/**
+	 * Creates an empty plugin-specific {@link org.syncany.plugins.transfer.TransferSettings} instance.
+	 *
+	 * @return Empty plugin-specific {@link org.syncany.plugins.transfer.TransferSettings} instance.
+	 * @throws StorageException Thrown if no {@link org.syncany.plugins.transfer.TransferSettings} are attached to a
+	 *         plugin using {@link org.syncany.plugins.transfer.PluginSettings}
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T extends TransferSettings> T createEmptySettings() throws StorageException {
+		final Class<? extends TransferSettings> transferSettings = TransferPluginUtil.getTransferSettingsClass(this.getClass());
+
+		if (transferSettings == null) {
+			throw new StorageException("TransferPlugin does not have any settings attached!");
+		}
+
+		try {
+			return (T) transferSettings.newInstance();
+		}
+		catch (InstantiationException | IllegalAccessException e) {
+			throw new RuntimeException("Unable to create TransferSettings: " + e.getMessage());
+		}
+	}
+
+	 /**
+	 * Creates an initialized, plugin-specific {@link org.syncany.plugins.transfer.TransferManager} object using the given
+	 * connection details.
+	 *
+	 * <p>The created instance can be used to upload/download/delete {@link RemoteFile}s
+	 * and query the remote storage for a file list.
+	 *
+	 * @param transferSettings A valid {@link org.syncany.plugins.transfer.TransferSettings} instance.
+	 * @param config A valid {@link org.syncany.config.Config} instance.
+	 * @return A initialized, plugin-specific {@link org.syncany.plugins.transfer.TransferManager} instance.
+	 * @throws StorageException Thrown if no (valid) {@link org.syncany.plugins.transfer.TransferManager} are attached to
+	*  a plugin using {@link org.syncany.plugins.transfer.PluginManager}
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T extends TransferManager> T createTransferManager(TransferSettings transferSettings, Config config) throws StorageException {
+		if (!transferSettings.isValid()) {
+			throw new StorageException("Unable to create transfer manager: connection isn't valid (perhaps missing some mandatory fields?)");
+		}
+
+		final Class<? extends TransferSettings> transferSettingsClass = TransferPluginUtil.getTransferSettingsClass(this.getClass());
+		final Class<? extends TransferManager> transferManagerClass = TransferPluginUtil.getTransferManagerClass(this.getClass());
+
+		if (transferSettingsClass == null) {
+			throw new RuntimeException("Unable to create transfer manager: No settings class attached");
+		}
+
+		if (transferManagerClass == null) {
+			throw new RuntimeException("Unable to create transfer manager: No manager class attached");
+		}
+
+		try {
+			Constructor<?> potentialConstructor = ReflectionUtil.getMatchingConstructorForClass(transferManagerClass, TransferSettings.class,
+					Config.class);
+
+			if (potentialConstructor == null) {
+				throw new RuntimeException("Invalid arguments for constructor in pluginclass -- must be 2 and subclass of " + TransferSettings.class
+						+ " and " + Config.class);
+			}
+
+			return (T) potentialConstructor.newInstance(transferSettingsClass.cast(transferSettings), config);
+		}
+		catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException("Unable to create transfer settings: " + e.getMessage(), e);
+		}
+	}
 }

@@ -15,14 +15,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.cli.init;
+package org.syncany.plugins;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 
-import org.syncany.plugins.transfer.PluginOptionCallback;
-import org.syncany.plugins.transfer.Setup;
 import org.syncany.plugins.transfer.TransferSettings;
 
 /**

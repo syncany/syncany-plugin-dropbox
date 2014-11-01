@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.transfer;
+package org.syncany.plugins;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -23,9 +23,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * The {@link org.syncany.plugins.transfer.Setup} annotation alters the initialization process.
+ * The {@link org.syncany.plugins.Setup} annotation alters the initialization process.
  *
- * @see org.syncany.PluginOptions
+ * @see org.syncany.plugins.PluginOptions
  * @author Christian Roth <christian.roth@port17.de>
  */
 @Target(ElementType.FIELD)
@@ -48,7 +48,7 @@ public @interface Setup {
 	boolean sensitive() default false;
 
 	/**
-	 * @see org.syncany.PluginOptionCallback
+	 * @see org.syncany.plugins.PluginOptionCallback
 	 */
 	Class<? extends PluginOptionCallback> callback() default PluginOptionCallback.class;
 }

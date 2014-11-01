@@ -19,9 +19,9 @@ package org.syncany.plugins.dummy;
 
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.core.Validate;
+import org.syncany.plugins.Encrypted;
+import org.syncany.plugins.Setup;
 import org.syncany.plugins.local.LocalTransferSettings;
-import org.syncany.plugins.transfer.Encrypted;
-import org.syncany.plugins.transfer.Setup;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.TransferSettings;
 

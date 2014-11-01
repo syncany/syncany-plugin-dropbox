@@ -15,29 +15,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.raid0;
-
-import org.simpleframework.xml.Element;
-import org.syncany.plugins.transfer.Setup;
-import org.syncany.plugins.transfer.TransferSettings;
+package org.syncany.plugins;
 
 /**
+ * Option callbacks are called during initialization and before the 
+ * corresponding setting is queried.
+ *
+ * @see org.syncany.plugins.PluginOptions
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class Raid0TransferSettings extends TransferSettings {	
-	@Element(name = "storage1", required = true)
-	@Setup(order = 1, description = "First storage settings")
-	public TransferSettings storage1;
-
-	@Element(name = "storage2", required = true)
-	@Setup(order = 2, description = "Second storage settings")
-	public TransferSettings storage2;
-
-	public TransferSettings getTransferSettings1() {
-		return storage1;
-	}
-
-	public TransferSettings getTransferSettings2() {
-		return storage2;
-	}
+public interface PluginOptionCallback {
+	/**
+	 * Called before a setting value is queried.
+	 *
+	 * @return The message to display.
+	 */
+	public String preQueryCallback();
 }
