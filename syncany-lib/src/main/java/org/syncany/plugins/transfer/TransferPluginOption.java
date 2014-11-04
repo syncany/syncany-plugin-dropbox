@@ -15,9 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins;
-
-import org.syncany.plugins.transfer.TransferSettings;
+package org.syncany.plugins.transfer;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -31,8 +29,7 @@ import java.lang.reflect.Type;
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class PluginOption {
-
+public class TransferPluginOption {
 	public enum ValidationResult {
 		VALID, INVALID_TYPE, INVALID_NOT_SET
 	}
@@ -44,11 +41,11 @@ public class PluginOption {
 	private final boolean encrypted;
 	private final boolean sensitive;
 	private final boolean required;
-	private final Class<? extends PluginOptionCallback> callback;
-	private final Class<? extends PluginOptionConverter> converter;
+	private final Class<? extends TransferPluginOptionCallback> callback;
+	private final Class<? extends TransferPluginOptionConverter> converter;
 
-	public PluginOption(Field field, String name, String description, Type type, boolean encrypted, boolean sensitive, boolean required,
-			Class<? extends PluginOptionCallback> callback, Class<? extends PluginOptionConverter> converter) {
+	public TransferPluginOption(Field field, String name, String description, Type type, boolean encrypted, boolean sensitive, boolean required,
+			Class<? extends TransferPluginOptionCallback> callback, Class<? extends TransferPluginOptionConverter> converter) {
 
 		this.field = field;
 		this.name = name;
@@ -89,15 +86,15 @@ public class PluginOption {
 		return required;
 	}
 
-	public Class<? extends PluginOptionCallback> getCallback() {
+	public Class<? extends TransferPluginOptionCallback> getCallback() {
 		return callback;
 	}
 
-	public Class<? extends PluginOptionConverter> getConverter() {
+	public Class<? extends TransferPluginOptionConverter> getConverter() {
 		return converter;
 	}
 
-	public PluginOption.ValidationResult isValid(String value) {
+	public ValidationResult isValid(String value) {
 		if (!validateInputMandatory(value)) {
 			return ValidationResult.INVALID_NOT_SET;
 		}

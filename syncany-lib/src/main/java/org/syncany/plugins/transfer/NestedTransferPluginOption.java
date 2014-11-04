@@ -15,28 +15,32 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins;
+package org.syncany.plugins.transfer;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.List;
 
 /**
- * This class represents the a
+ * A nested plugin option is a special {@link TransferPluginOption} -- namely an
+ * option that contains a complex object rather than just a simple value.
+ *
+ * <p>Nested plugin options are typically used to represent/use sub-plugins
+ * within a certain plugin, e.g. to allow building a RAID0/1 plugin.
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class NestedPluginOption extends PluginOption {
-	private final List<PluginOption> options;
+public class NestedTransferPluginOption extends TransferPluginOption {
+	private final List<TransferPluginOption> options;
 
-	public NestedPluginOption(Field field, String name, String description, Type type, boolean encrypted, boolean sensitive, boolean required,
-			Class<? extends PluginOptionCallback> callback, Class<? extends PluginOptionConverter> converter, List<PluginOption> nestedOptions) {
+	public NestedTransferPluginOption(Field field, String name, String description, Type type, boolean encrypted, boolean sensitive, boolean required,
+			Class<? extends TransferPluginOptionCallback> callback, Class<? extends TransferPluginOptionConverter> converter, List<TransferPluginOption> nestedOptions) {
 
 		super(field, name, description, type, encrypted, sensitive, required, callback, converter);
 		this.options = nestedOptions;
 	}
 
-	public List<PluginOption> getOptions() {
+	public List<TransferPluginOption> getOptions() {
 		return options;
 	}
 }
