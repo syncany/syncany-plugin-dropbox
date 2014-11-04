@@ -20,11 +20,12 @@ package org.syncany.plugins.dropbox;
 import java.io.File;
 
 import org.simpleframework.xml.Element;
-import org.syncany.plugins.Encrypted;
-import org.syncany.plugins.PluginOptionCallback;
-import org.syncany.plugins.PluginOptionConverter;
-import org.syncany.plugins.Setup;
+import org.syncany.plugins.transfer.Encrypted;
+import org.syncany.plugins.transfer.Setup;
+import org.syncany.plugins.transfer.TransferPluginOptionCallback;
+import org.syncany.plugins.transfer.TransferPluginOptionConverter;
 import org.syncany.plugins.transfer.TransferSettings;
+
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxWebAuthNoRedirect;
@@ -53,7 +54,7 @@ public class DropboxTransferSettings extends TransferSettings {
 		return path;
 	}
 
-	public static class DropboxAuthPluginOptionCallback implements PluginOptionCallback {
+	public static class DropboxAuthPluginOptionCallback implements TransferPluginOptionCallback {
 
 		@Override
 		public String preQueryCallback() {
@@ -76,7 +77,7 @@ public class DropboxTransferSettings extends TransferSettings {
 
 	}
 
-	public static class DropboxAuthPluginOptionConverter implements PluginOptionConverter {
+	public static class DropboxAuthPluginOptionConverter implements TransferPluginOptionConverter {
 
 		@Override
 		public String convert(String input) {
