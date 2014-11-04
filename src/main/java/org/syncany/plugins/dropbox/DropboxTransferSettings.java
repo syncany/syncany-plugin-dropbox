@@ -17,17 +17,17 @@
  */
 package org.syncany.plugins.dropbox;
 
-import com.dropbox.core.DbxClient;
-import com.dropbox.core.DbxException;
-import com.dropbox.core.DbxWebAuthNoRedirect;
+import java.io.File;
+
 import org.simpleframework.xml.Element;
 import org.syncany.plugins.Encrypted;
 import org.syncany.plugins.PluginOptionCallback;
 import org.syncany.plugins.PluginOptionConverter;
 import org.syncany.plugins.Setup;
 import org.syncany.plugins.transfer.TransferSettings;
-
-import java.io.File;
+import com.dropbox.core.DbxClient;
+import com.dropbox.core.DbxException;
+import com.dropbox.core.DbxWebAuthNoRedirect;
 
 /**
  * @author Christian Roth <christian.roth@port17.de>
@@ -70,7 +70,6 @@ public class DropboxTransferSettings extends TransferSettings {
 				return String.format("Linked with %s's account", client.getAccountInfo().displayName);
 			}
 			catch (DbxException e) {
-				e.printStackTrace();
 				throw new RuntimeException("Error requesting dropbox data: " + e.getMessage());
 			}
 		}
