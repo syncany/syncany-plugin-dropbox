@@ -15,22 +15,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.dummy;
+package org.syncany.plugins.unreliable_local;
 
-import org.syncany.plugins.transfer.PluginManager;
-import org.syncany.plugins.transfer.PluginSettings;
 import org.syncany.plugins.transfer.TransferPlugin;
 
 /**
- * @author Christian Roth <christian.roth@port17.de>
+ * The unreliable local plugin can be used for test purposes to
+ * test connection issues with the backend storage. Each operation of the
+ * plugin (e.g upload, download, ...) can be failed on purpose through
+ * regular expressions on the operation signature.
+ *
+ * @author Philipp C. Heckel <philipp.heckel@gmail.com>
  */
-
-@PluginSettings(DummyTransferSettings.class)
-@PluginManager(DummyTransferManager.class)
-public class DummyTransferPlugin extends TransferPlugin {
-
-	public DummyTransferPlugin() {
-		super("dummy");
+public class UnreliableLocalTransferPlugin extends TransferPlugin {
+	public UnreliableLocalTransferPlugin() {
+		super("unreliable_local");
 	}
-
 }
