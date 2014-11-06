@@ -8,10 +8,10 @@ configurations {
 project.ext {
 	pluginId = "dropbox"
 	pluginName = "Dropbox"
-	pluginVersion = "0.1.13-alpha"	
+	pluginVersion = "0.2.0-alpha"	
 	pluginDebianVersion = "1"	
 	pluginDate = new Date()
-	pluginAppMinVersion = "0.1.12-alpha"
+	pluginAppMinVersion = "0.2.0-alpha"
 	pluginRelease = rootProject.ext.applicationRelease
 	pluginConflictsWith = ""
 	
