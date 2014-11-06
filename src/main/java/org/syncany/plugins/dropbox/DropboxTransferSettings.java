@@ -75,7 +75,6 @@ public class DropboxTransferSettings extends TransferSettings {
 				return String.format("\nSuccessfully linked with %s's account!\n", client.getAccountInfo().displayName);
 			}
 			catch (DbxException e) {
-				e.printStackTrace();
 				throw new RuntimeException("Error requesting dropbox data: " + e.getMessage());
 			}
 		}
