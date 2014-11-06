@@ -42,7 +42,7 @@ public class DropboxTransferSettings extends TransferSettings {
 	public String accessToken;
 
 	@Element(name = "path", required = true)
-	@Setup(order = 2, description = "Path relative to Dropbox root")
+	@Setup(order = 2, description = "Path relative to syncany's app root")
 	public File path;
 
 	public String getAccessToken() {

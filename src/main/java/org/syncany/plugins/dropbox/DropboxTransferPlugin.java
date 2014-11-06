@@ -17,18 +17,18 @@
  */
 package org.syncany.plugins.dropbox;
 
+import java.util.Locale;
+
+import org.syncany.plugins.transfer.TransferPlugin;
 import com.dropbox.core.DbxAppInfo;
 import com.dropbox.core.DbxRequestConfig;
-import org.syncany.plugins.transfer.TransferPlugin;
-
-import java.util.Locale;
 
 /**
  * @author Christian Roth <christian.roth@port17.de>
  */
 public class DropboxTransferPlugin extends TransferPlugin {
-	private static final String APP_KEY = "6n0xvztavxyymgj";
-	private static final String APP_SECRET = "ef5gk2pc5f5u0zc";
+	private static final String APP_KEY = "dlg8wdfpf3xa5jv";
+	private static final String APP_SECRET = "ya9t3c6xk9o3ndg";
 
 	public static final DbxAppInfo DROPBOX_APP_INFO = new DbxAppInfo(APP_KEY, APP_SECRET);
 	public static final DbxRequestConfig DROPBOX_REQ_CONFIG = new DbxRequestConfig("syncany", Locale.ENGLISH.toString());
