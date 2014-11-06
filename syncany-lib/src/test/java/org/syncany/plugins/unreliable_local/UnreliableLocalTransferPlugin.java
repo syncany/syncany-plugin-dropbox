@@ -15,21 +15,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins;
+package org.syncany.plugins.unreliable_local;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.syncany.plugins.transfer.TransferPlugin;
 
 /**
- * Annotating a field with {@link org.syncany.plugins.Encrypted} implies that the field's value shell be stored
- * encrypted in the xml representation. Recommended when storing login credentials.
+ * The unreliable local plugin can be used for test purposes to
+ * test connection issues with the backend storage. Each operation of the
+ * plugin (e.g upload, download, ...) can be failed on purpose through
+ * regular expressions on the operation signature.
  *
- * @author Christian Roth <christian.roth@port17.de>
+ * @author Philipp C. Heckel <philipp.heckel@gmail.com>
  */
-@Target(ElementType.FIELD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Encrypted {
-	// empty
+public class UnreliableLocalTransferPlugin extends TransferPlugin {
+	public UnreliableLocalTransferPlugin() {
+		super("unreliable_local");
+	}
 }

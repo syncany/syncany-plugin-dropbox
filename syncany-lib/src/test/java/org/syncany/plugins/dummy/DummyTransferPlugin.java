@@ -15,23 +15,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins;
+package org.syncany.plugins.dummy;
+
+import org.syncany.plugins.transfer.TransferPlugin;
 
 /**
- * Option convert is called during initialization and can be used to
- * convert a user input before setting it.
- *
- * @see org.syncany.plugins.PluginOptions
  * @author Christian Roth <christian.roth@port17.de>
  */
-
-public interface PluginOptionConverter {
-
-	/**
-	 * Converter a user input
-	 *
-	 * @param input The value as it is entered by the user
-	 * @return Converted value as a (raw) string
-	 */
-	public String convert(String input);
+public class DummyTransferPlugin extends TransferPlugin {
+	public DummyTransferPlugin() {
+		super("dummy");
+	}
 }

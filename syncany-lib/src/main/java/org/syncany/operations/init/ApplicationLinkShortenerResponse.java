@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,22 +15,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.dummy;
+package org.syncany.operations.init;
 
-import org.syncany.plugins.transfer.PluginManager;
-import org.syncany.plugins.transfer.PluginSettings;
-import org.syncany.plugins.transfer.TransferPlugin;
+import org.simpleframework.xml.Element;
 
-/**
- * @author Christian Roth <christian.roth@port17.de>
- */
+public class ApplicationLinkShortenerResponse {
+	@Element(name = "shortLinkId", required = true)
+	private String shortLinkId;
 
-@PluginSettings(DummyTransferSettings.class)
-@PluginManager(DummyTransferManager.class)
-public class DummyTransferPlugin extends TransferPlugin {
-
-	public DummyTransferPlugin() {
-		super("dummy");
+	public String getShortLinkId() {
+		return shortLinkId;
 	}
-
 }

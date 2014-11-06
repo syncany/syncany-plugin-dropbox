@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,22 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.transfer;
+package org.syncany.operations.daemon.messages;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.syncany.operations.daemon.messages.api.ExternalEvent;
 
-/**
- * Use this annotation to link a {@link org.syncany.plugins.transfer.TransferManager} class with
- * a {@link org.syncany.plugins.transfer.TransferPlugin}.
- *
- * @author Christian Roth <christian.roth@port17.de>
- */
-
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface PluginManager {
-	Class<? extends TransferManager> value();
+public class DaemonReloadedExternalEvent extends ExternalEvent {
+	// Nothing here
 }
