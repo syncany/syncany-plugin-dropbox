@@ -1,6 +1,6 @@
 Change Log
 ==========
 
-### Syncany Dropbox Plugin 0.1.13-alpha (Date: Tbd.)
+### Syncany Dropbox Plugin 0.2.0-alpha (Date: Tbd.)
 - First release
 

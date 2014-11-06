@@ -17,28 +17,28 @@
  */
 package org.syncany.plugins.dropbox;
 
+import java.io.File;
+
+import org.simpleframework.xml.Element;
+import org.syncany.plugins.transfer.Encrypted;
+import org.syncany.plugins.transfer.Setup;
+import org.syncany.plugins.transfer.TransferPluginOptionCallback;
+import org.syncany.plugins.transfer.TransferPluginOptionConverter;
+import org.syncany.plugins.transfer.TransferSettings;
+
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxWebAuthNoRedirect;
-import org.simpleframework.xml.Element;
-import org.syncany.plugins.Encrypted;
-import org.syncany.plugins.PluginOptionCallback;
-import org.syncany.plugins.PluginOptionConverter;
-import org.syncany.plugins.Setup;
-import org.syncany.plugins.transfer.TransferSettings;
-
-import java.io.File;
 
 /**
  * @author Christian Roth <christian.roth@port17.de>
  */
 public class DropboxTransferSettings extends TransferSettings {
-
 	private static DbxWebAuthNoRedirect webAuth;
 
 	@Element(name = "accessToken", required = true)
+	@Setup(order = 1, sensitive = true, callback = DropboxAuthPluginOptionCallback.class, converter = DropboxAuthPluginOptionConverter.class)
 	@Encrypted
-	@Setup(order = 1, callback = DropboxAuthPluginOptionCallback.class, converter = DropboxAuthPluginOptionConverter.class)
 	public String accessToken;
 
 	@Element(name = "path", required = true)
@@ -53,32 +53,35 @@ public class DropboxTransferSettings extends TransferSettings {
 		return path;
 	}
 
-	public static class DropboxAuthPluginOptionCallback implements PluginOptionCallback {
-
+	public static class DropboxAuthPluginOptionCallback implements TransferPluginOptionCallback {
 		@Override
 		public String preQueryCallback() {
 			webAuth = new DbxWebAuthNoRedirect(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, DropboxTransferPlugin.DROPBOX_APP_INFO);
 			String authorizeUrl = webAuth.start();
 
-			return String.format("Please open \n  %s\nto obtain an access token for your dropbox account", authorizeUrl);
+			return String.format(
+				      "\n"
+					+ "The Dropbox plugin needs to obtain an access token from Dropbox\n"
+					+ "to read and write to your Dropbox. Please follow the instructions\n"
+					+ "on the following site to authorize Syncany:\n"
+					+ "\n"
+					+ "    %s\n", authorizeUrl);
 		}
 
 		@Override
 		public String postQueryCallback(String optionValue) {
 			try {
 				DbxClient client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, optionValue);
-				return String.format("Linked with %s's account", client.getAccountInfo().displayName);
+				return String.format("\nSuccessfully linked with %s's account!\n", client.getAccountInfo().displayName);
 			}
 			catch (DbxException e) {
 				e.printStackTrace();
 				throw new RuntimeException("Error requesting dropbox data: " + e.getMessage());
 			}
 		}
-
 	}
 
-	public static class DropboxAuthPluginOptionConverter implements PluginOptionConverter {
-
+	public static class DropboxAuthPluginOptionConverter implements TransferPluginOptionConverter {
 		@Override
 		public String convert(String input) {
 			try {
