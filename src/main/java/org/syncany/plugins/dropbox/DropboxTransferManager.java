@@ -17,10 +17,19 @@
  */
 package org.syncany.plugins.dropbox;
 
-import com.dropbox.core.DbxClient;
-import com.dropbox.core.DbxEntry;
-import com.dropbox.core.DbxException;
-import com.dropbox.core.DbxWriteMode;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
@@ -36,17 +45,10 @@ import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import com.dropbox.core.DbxClient;
+import com.dropbox.core.DbxEntry;
+import com.dropbox.core.DbxException;
+import com.dropbox.core.DbxWriteMode;
 
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
@@ -70,6 +72,8 @@ import java.util.logging.Logger;
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
+	private static final String ROOT_FOLDER_NAME = "syncany-connector";
+
 	private final DbxClient client;
 	private final String path;
 	private final String multichunksPath;
@@ -81,7 +85,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
 
-		this.path = "/" + settings.getPath().getPath();
+		this.path = ("/" + settings.getPath().getPath()).replaceAll("[/]{2,}", "/");
 		this.multichunksPath = new File(this.path, "/multichunks/").getPath();
 		this.databasesPath = new File(this.path, "/databases/").getPath();
 		this.actionsPath = new File(this.path, "/actions/").getPath();
@@ -313,7 +317,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		try {
 			DbxEntry metadata = this.client.getMetadata(this.path);
 
-			if (metadata.isFolder()) {
+			if (metadata != null && metadata.isFolder()) {
 				logger.log(Level.INFO, "testTargetExists: Target does exist.");
 				return true;
 			}
