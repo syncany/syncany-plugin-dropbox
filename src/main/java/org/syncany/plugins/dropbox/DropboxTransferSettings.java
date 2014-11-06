@@ -37,12 +37,12 @@ public class DropboxTransferSettings extends TransferSettings {
 	private static DbxWebAuthNoRedirect webAuth;
 
 	@Element(name = "accessToken", required = true)
-	@Setup(order = 1, sensitive = true, callback = DropboxAuthPluginOptionCallback.class, converter = DropboxAuthPluginOptionConverter.class)
+	@Setup(order = 1, sensitive = true, description = "Access token", callback = DropboxAuthPluginOptionCallback.class, converter = DropboxAuthPluginOptionConverter.class)
 	@Encrypted
 	public String accessToken;
 
 	@Element(name = "path", required = true)
-	@Setup(order = 2, description = "Path relative to dropbox root")
+	@Setup(order = 2, description = "Path relative to Dropbox root")
 	public File path;
 
 	public String getAccessToken() {
