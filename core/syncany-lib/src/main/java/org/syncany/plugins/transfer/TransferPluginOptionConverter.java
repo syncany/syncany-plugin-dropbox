@@ -15,27 +15,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.plugins.unreliable_local;
-
-import org.syncany.plugins.transfer.PluginManager;
-import org.syncany.plugins.transfer.PluginSettings;
-import org.syncany.plugins.transfer.TransferPlugin;
+package org.syncany.plugins.transfer;
 
 /**
- * The unreliable local plugin can be used for test purposes to
- * test connection issues with the backend storage. Each operation of the
- * plugin (e.g upload, download, ...) can be failed on purpose through
- * regular expressions on the operation signature.
+ * Option convert is called during initialization and can be used to
+ * convert a user input before setting it.
  *
- * @author Philipp C. Heckel <philipp.heckel@gmail.com>
+ * @see org.syncany.plugins.transfer.TransferPluginOptions
+ * @author Christian Roth <christian.roth@port17.de>
  */
+public interface TransferPluginOptionConverter {
 
-@PluginSettings(UnreliableLocalTransferSettings.class)
-@PluginManager(UnreliableLocalTransferManager.class)
-public class UnreliableLocalPlugin extends TransferPlugin {
-
-	public UnreliableLocalPlugin() {
-		super("unreliable_local");
-	}
-  
+	/**
+	 * Converter a user input
+	 *
+	 * @param input The value as it is entered by the user
+	 * @return Converted value as a (raw) string
+	 */
+	public String convert(String input);
 }

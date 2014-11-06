@@ -15,29 +15,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.operations.daemon.messages;
+package org.syncany.operations.init;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.syncany.operations.OperationOptions;
 
-import org.simpleframework.xml.ElementList;
-import org.syncany.operations.daemon.Watch;
-import org.syncany.operations.daemon.messages.api.ManagementResponse;
+public class GenlinkOperationOptions implements OperationOptions {	
+	private boolean shortUrl;
 
-public class ListWatchesManagementResponse extends ManagementResponse {
-	@ElementList(required = true, entry="watch")
-	private ArrayList<Watch> watches;	
-	
-	public ListWatchesManagementResponse() {
-		// Nothing
+	public boolean isShortUrl() {
+		return shortUrl;
 	}
-	
-	public ListWatchesManagementResponse(int requestId, List<Watch> watches) {
-		super(200, requestId, null);
-		this.watches = new ArrayList<Watch>(watches);
-	}	
-	
-	public ArrayList<Watch> getWatches() {
-		return watches;
+
+	public void setShortUrl(boolean shortUrl) {
+		this.shortUrl = shortUrl;
 	}
 }

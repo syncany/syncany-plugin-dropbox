@@ -17,15 +17,12 @@
  */
 package org.syncany.operations.init;
 
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.syncany.config.Config;
 import org.syncany.config.ConfigHelper;
 import org.syncany.config.to.ConfigTO;
-import org.syncany.crypto.CipherSpec;
-import org.syncany.crypto.CipherSpecs;
 
 /**
  * This operation generates a link which can be shared among users to connect to
@@ -36,14 +33,17 @@ import org.syncany.crypto.CipherSpecs;
  */
 public class GenlinkOperation extends AbstractInitOperation {
 	private static final Logger logger = Logger.getLogger(GenlinkOperation.class.getSimpleName());
+	
+	private GenlinkOperationOptions options;
 	private ConfigTO configTO;
 
-	public GenlinkOperation(Config config) {
+	public GenlinkOperation(Config config, GenlinkOperationOptions options) {
 		super(config, null);
+		this.options = options;
 	}
 
-	public GenlinkOperation(ConfigTO configTO) {
-		super(null, null);
+	public GenlinkOperation(ConfigTO configTO, GenlinkOperationOptions options) {
+		this((Config) null, options);
 		this.configTO = configTO;
 	}
 
@@ -57,20 +57,15 @@ public class GenlinkOperation extends AbstractInitOperation {
 			configTO = ConfigHelper.loadConfigTO(config.getLocalDir());
 		}
 
-		String shareLink = null;
-		boolean shareLinkEncrypted = false;
+		ApplicationLink applicationLink = new ApplicationLink(configTO.getTransferSettings(), options.isShortUrl());
 
-		if (configTO.getMasterKey() != null) {
-			List<CipherSpec> cipherSpecs = CipherSpecs.getDefaultCipherSpecs(); // TODO [low] Shouldn't this be the same as the application?!
-
-			shareLink = getEncryptedLink(configTO.getTransferSettings(), cipherSpecs, configTO.getMasterKey());
-			shareLinkEncrypted = true;
+		if (configTO.getMasterKey() != null) {	
+			String encryptedLinkStr = applicationLink.createEncryptedLink(configTO.getMasterKey());
+			return new GenlinkOperationResult(encryptedLinkStr, true);
 		}
 		else {
-			shareLink = getPlaintextLink(configTO.getTransferSettings());
-			shareLinkEncrypted = false;
+			String plaintextLinkStr = applicationLink.createPlaintextLink();
+			return new GenlinkOperationResult(plaintextLinkStr, false);
 		}
-
-		return new GenlinkOperationResult(shareLink, shareLinkEncrypted);
 	}
 }
