@@ -6,9 +6,10 @@ env:
   - TERM=dumb
 
   # FTP credentials
-  - secure: "LAMWFsDclMmCeJXfByzRkTm21l9qfOQXPu/mLz0Kz5Gx7eoSFR4wjFdejkPzAJCMhK43S5/Wo2QCnrbC3hqdRung5m3Gq+/RgokGnQnAOmWUHKNzqiIkUi9+vKTaRl9/gvPHqOXLTmCL/ZhFqglnYmJzntdchkjEZApJ8VZo+Lc="
-  - secure: "RnM0Nt7PBHQHVczDS4zl6zPjAyOyDtmnxjTHFYvg4EwAOmvMjYG7CouIMU65WCGJFIvuE9nKlf9ekm92+csBPDwYRNePUjuBiEBlFOc1gRzWIDjXZjRIk/AD4jxYF/EfZ2ZaQdazaguKXV+yQdv/qMg8oCLDV1f5It7MogAz0zQ="
-  - secure: "R1i+TBMAG/SE9nTbFg35nRbBe9Jkg+KINjWzUZA1dsHPprBGdSl4idKq+ql3R5RI4AH5w6EizDEhANDhskZWjHr7hsGd33sATTy5ZAjhE0TLqJfosVVq+TrK8CUrGhx9ztbF0fWrvcO5qIaUNamTHOBZzlkviHc2j/8o8Bz9GWc="
+  - secure: "XnoM3OihwienXghBYB+usz69KnmcCT68pjz52c+hT6565bDwMFJoe3tb5oF8cUsZOQXmthI6SJPihis7MHLlAedbK3HTdOu1PJeS0Ev4iVz7cKXGoKlVME5vjupooWlU1DajAlO01pmbyoWkXlSVW2Fq6jrWS3NQa8skH+/uNO8="
+  - secure: "RRTWhxJ3ocfY/JwyUmqiiEJd62UzW/ZLmkDnX2MFxGX88Q2ro93jpVY8jg7pa2/F0bqsPg3hnVx44m6d+K2/g3JS5DAqJ2zkFe5GT49xHtAdEAF3V69p1jWzOX+WSS3Q/0eAhVjMZc8YB6mQeakUQfiV7yjqzF6S7vb2CiPOB2w="
+  - secure: "AIoro3khVvK4kf5DDI8VZAMN8LKJWiEfJ2OslUZGvca7VEQAkHEtTtlL0MWGOOmTHxvxuLMPXtycjrMTAEYeEFy0rGVD1Du8uElilFkJwkClIAac1zXSePy++fl3v9mhbI1t8iu5NJn4BLixgMtmzFunJAiaNIytQXBZ+EfXa64="
+
   
 branches:
   only:
