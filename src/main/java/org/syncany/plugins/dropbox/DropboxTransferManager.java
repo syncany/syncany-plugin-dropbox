@@ -269,7 +269,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		if (remoteFile.equals(MultichunkRemoteFile.class)) {
 			return multichunksPath;
 		}
-		else if (remoteFile.equals(DatabaseRemoteFile.class)) {
+		else if (remoteFile.equals(DatabaseRemoteFile.class) || remoteFile.equals(CleanupRemoteFile.class)) {
 			return databasesPath;
 		}
 		else if (remoteFile.equals(ActionRemoteFile.class)) {
