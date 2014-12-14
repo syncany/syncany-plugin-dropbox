@@ -34,7 +34,7 @@ import com.dropbox.core.DbxWebAuthNoRedirect;
  * @author Christian Roth <christian.roth@port17.de>
  */
 public class DropboxTransferSettings extends TransferSettings {
-	private static DbxWebAuthNoRedirect webAuth;
+	private DbxWebAuthNoRedirect webAuth;
 
 	@Element(name = "accessToken", required = true)
 	@Setup(order = 1, sensitive = true, singular = true, description = "Access token", callback = DropboxAuthPluginOptionCallback.class, converter = DropboxAuthPluginOptionConverter.class)
@@ -42,7 +42,7 @@ public class DropboxTransferSettings extends TransferSettings {
 	public String accessToken;
 
 	@Element(name = "path", required = true)
-	@Setup(order = 2, description = "Path relative to syncany's app root")
+	@Setup(order = 2, description = "Relative path on Dropbox")
 	public File path;
 
 	public String getAccessToken() {
@@ -53,7 +53,7 @@ public class DropboxTransferSettings extends TransferSettings {
 		return path;
 	}
 
-	public static class DropboxAuthPluginOptionCallback implements TransferPluginOptionCallback {
+	public class DropboxAuthPluginOptionCallback implements TransferPluginOptionCallback {
 		@Override
 		public String preQueryCallback() {
 			webAuth = new DbxWebAuthNoRedirect(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, DropboxTransferPlugin.DROPBOX_APP_INFO);
@@ -80,7 +80,7 @@ public class DropboxTransferSettings extends TransferSettings {
 		}
 	}
 
-	public static class DropboxAuthPluginOptionConverter implements TransferPluginOptionConverter {
+	public class DropboxAuthPluginOptionConverter implements TransferPluginOptionConverter {
 		@Override
 		public String convert(String input) {
 			try {

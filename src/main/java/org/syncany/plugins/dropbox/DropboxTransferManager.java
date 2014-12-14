@@ -72,8 +72,6 @@ import com.dropbox.core.DbxWriteMode;
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
-	private static final String ROOT_FOLDER_NAME = "syncany-connector";
-
 	private final DbxClient client;
 	private final String path;
 	private final String multichunksPath;
