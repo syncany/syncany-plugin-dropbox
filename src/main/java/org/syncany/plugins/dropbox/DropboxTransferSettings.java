@@ -17,7 +17,6 @@
  */
 package org.syncany.plugins.dropbox;
 
-import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -28,7 +27,6 @@ import org.syncany.plugins.transfer.OAuth;
 import org.syncany.plugins.transfer.OAuthGenerator;
 import org.syncany.plugins.transfer.Setup;
 import org.syncany.plugins.transfer.StorageException;
-import org.syncany.plugins.transfer.TransferPluginOptionConverter;
 import org.syncany.plugins.transfer.TransferSettings;
 
 import com.dropbox.core.DbxClient;
@@ -49,13 +47,13 @@ public class DropboxTransferSettings extends TransferSettings {
 
 	@Element(name = "path", required = true)
 	@Setup(order = 2, description = "Relative path on Dropbox")
-	public File path;
+	public String path;
 
 	public String getAccessToken() {
 		return accessToken;
 	}
 
-	public File getPath() {
+	public String getPath() {
 		return path;
 	}
 
@@ -83,18 +81,6 @@ public class DropboxTransferSettings extends TransferSettings {
 			}
 			catch (DbxException e) {
 				throw new RuntimeException("Error requesting dropbox data: " + e.getMessage());
-			}
-		}
-	}
-
-	public class DropboxAuthPluginOptionConverter implements TransferPluginOptionConverter {
-		@Override
-		public String convert(String input) {
-			try {
-				return webAuth.finish(input).accessToken;
-			}
-			catch (DbxException e) {
-				throw new RuntimeException("Unable to extract oauth token: " + e.getMessage());
 			}
 		}
 	}
