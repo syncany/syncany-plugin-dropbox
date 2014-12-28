@@ -83,7 +83,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
 
-		this.path = ("/" + settings.getPath().getPath()).replaceAll("[/]{2,}", "/");
+		this.path = ("/" + settings.getPath()).replaceAll("[/]{2,}", "/");
 		this.multichunksPath = new File(this.path, "/multichunks/").getPath();
 		this.databasesPath = new File(this.path, "/databases/").getPath();
 		this.actionsPath = new File(this.path, "/actions/").getPath();
