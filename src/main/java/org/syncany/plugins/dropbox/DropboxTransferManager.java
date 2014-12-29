@@ -48,6 +48,7 @@ import org.syncany.util.FileUtil;
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
+import com.dropbox.core.DbxException.BadResponseCode;
 import com.dropbox.core.DbxWriteMode;
 
 /**
@@ -84,11 +85,11 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		super(settings, config);
 
 		this.path = ("/" + settings.getPath()).replaceAll("[/]{2,}", "/");
-		this.multichunksPath = new File(this.path, "/multichunks/").getPath();
-		this.databasesPath = new File(this.path, "/databases/").getPath();
-		this.actionsPath = new File(this.path, "/actions/").getPath();
-		this.transactionsPath = new File(this.path, "/transactions/").getPath();
-		this.tempPath = new File(this.path, "/temporary/").getPath();
+		this.multichunksPath = new File(path, "/multichunks/").getPath();
+		this.databasesPath = new File(path, "/databases/").getPath();
+		this.actionsPath = new File(path, "/actions/").getPath();
+		this.transactionsPath = new File(path, "/transactions/").getPath();
+		this.tempPath = new File(path, "/temporary/").getPath();
 
 		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
@@ -97,7 +98,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public void connect() throws StorageException {
 		// make a connect
 		try {
-			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[] { this.client.getAccountInfo().displayName });
+			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[] { client.getAccountInfo().displayName });
 		}
 		catch (DbxException.InvalidAccessToken e) {
 			throw new StorageException("The accessToken in use is invalid", e);
@@ -118,14 +119,14 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 		try {
 			if (!testTargetExists() && createIfRequired) {
-				this.client.createFolder(this.path);
+				client.createFolder(path);
 			}
 
-			this.client.createFolder(this.multichunksPath);
-			this.client.createFolder(this.databasesPath);
-			this.client.createFolder(this.actionsPath);
-			this.client.createFolder(this.transactionsPath);
-			this.client.createFolder(this.tempPath);
+			client.createFolder(multichunksPath);
+			client.createFolder(databasesPath);
+			client.createFolder(actionsPath);
+			client.createFolder(transactionsPath);
+			client.createFolder(tempPath);
 		}
 		catch (DbxException e) {
 			throw new StorageException("init: Cannot create required directories", e);
@@ -149,7 +150,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[] { remotePath, tempFile });
 				}
 
-				this.client.getFile(remotePath, null, tempFOS);
+				client.getFile(remotePath, null, tempFOS);
 
 				tempFOS.close();
 
@@ -172,7 +173,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public void upload(File localFile, RemoteFile remoteFile) throws StorageException {
 		String remotePath = getRemoteFile(remoteFile);
-		String tempRemotePath = this.path + "/temp-" + remoteFile.getName();
+		String tempRemotePath = path + "/temp-" + remoteFile.getName();
 
 		try {
 			// Upload to temp file
@@ -182,7 +183,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[] { localFile, tempRemotePath });
 			}
 
-			this.client.uploadFile(tempRemotePath, DbxWriteMode.add(), localFile.length(), fileFIS);
+			client.uploadFile(tempRemotePath, DbxWriteMode.add(), localFile.length(), fileFIS);
 
 			fileFIS.close();
 
@@ -191,7 +192,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempRemotePath, remotePath });
 			}
 
-			this.client.move(tempRemotePath, remotePath);
+			client.move(tempRemotePath, remotePath);
 		}
 		catch (DbxException | IOException ex) {
 			logger.log(Level.SEVERE, "Could not upload file " + localFile + " to " + remoteFile.getName(), ex);
@@ -204,12 +205,22 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		String remotePath = getRemoteFile(remoteFile);
 
 		try {
-			this.client.delete(remotePath);
+			client.delete(remotePath);
 			return true;
 		}
-		catch (DbxException ex) {
-			logger.log(Level.SEVERE, "Could not delete file " + remoteFile.getName(), ex);
-			throw new StorageException(ex);
+		catch (BadResponseCode e) {
+			if (e.statusCode == 404) {
+				logger.log(Level.INFO, "File does not exist. Doing nothing: " + remoteFile.getName(), e);
+				return true;
+			}
+			else {
+				logger.log(Level.SEVERE, "Could not delete file " + remoteFile.getName(), e);
+				throw new StorageException(e);
+			}
+		}
+		catch (DbxException e) {
+			logger.log(Level.SEVERE, "Could not delete file " + remoteFile.getName(), e);
+			throw new StorageException(e);
 		}
 	}
 
@@ -219,7 +230,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		String targetRemotePath = getRemoteFile(targetFile);
 
 		try {
-			this.client.move(sourceRemotePath, targetRemotePath);
+			client.move(sourceRemotePath, targetRemotePath);
 		}
 		catch (DbxException e) {
 			logger.log(Level.SEVERE, "Could not rename file " + sourceRemotePath + " to " + targetRemotePath, e);
@@ -233,7 +244,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			// List folder
 			String remoteFilePath = getRemoteFilePath(remoteFileClass);
 
-			DbxEntry.WithChildren listing = this.client.getMetadataWithChildren(remoteFilePath);
+			DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
 
 			// Create RemoteFile objects
 			Map<String, T> remoteFiles = new HashMap<String, T>();
@@ -288,11 +299,11 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public boolean testTargetCanWrite() {
 		try {
 			if (testTargetExists()) {
-				String tempRemoteFile = this.path + "/syncany-write-test";
+				String tempRemoteFile = path + "/syncany-write-test";
 				File tempFile = File.createTempFile("syncany-write-test", "tmp");
 
-				this.client.uploadFile(tempRemoteFile, DbxWriteMode.add(), 0, new ByteArrayInputStream(new byte[0]));
-				this.client.delete(tempRemoteFile);
+				client.uploadFile(tempRemoteFile, DbxWriteMode.add(), 0, new ByteArrayInputStream(new byte[0]));
+				client.delete(tempRemoteFile);
 
 				tempFile.delete();
 
@@ -313,7 +324,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetExists() {
 		try {
-			DbxEntry metadata = this.client.getMetadata(this.path);
+			DbxEntry metadata = client.getMetadata(path);
 
 			if (metadata != null && metadata.isFolder()) {
 				logger.log(Level.INFO, "testTargetExists: Target does exist.");
@@ -333,13 +344,13 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetCanCreate() {
 		// Find parent path
-		String repoPathNoSlash = FileUtil.removeTrailingSlash(this.path);
+		String repoPathNoSlash = FileUtil.removeTrailingSlash(path);
 		int repoPathLastSlash = repoPathNoSlash.lastIndexOf("/");
 		String parentPath = (repoPathLastSlash > 0) ? repoPathNoSlash.substring(0, repoPathLastSlash) : "/";
 
 		// Test parent path permissions
 		try {
-			DbxEntry metadata = this.client.getMetadata(parentPath);
+			DbxEntry metadata = client.getMetadata(parentPath);
 
 			// our app has read/write for EVERY folder inside a dropbox. as long as it exists, we can write in it
 			if (metadata.isFolder()) {
@@ -362,7 +373,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public boolean testRepoFileExists() {
 		try {
 			String repoFilePath = getRemoteFile(new SyncanyRemoteFile());
-			DbxEntry metadata = this.client.getMetadata(repoFilePath);
+			DbxEntry metadata = client.getMetadata(repoFilePath);
 
 			if (metadata != null && metadata.isFile()) {
 				logger.log(Level.INFO, "testRepoFileExists: Repo file exists at " + repoFilePath);
