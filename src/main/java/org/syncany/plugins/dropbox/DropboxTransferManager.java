@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
@@ -44,7 +46,6 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
-
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
@@ -72,6 +73,9 @@ import com.dropbox.core.DbxWriteMode;
  */
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
+	private static final Pattern MULTICHUNK_ID_PATTERN = Pattern.compile("multichunk-([a-z0-9]{40})", Pattern.CASE_INSENSITIVE);
+	private static final int MULTICHUNK_ID_BYTES_PER_FOLDER = 2;
+	private static final int MULTICHUNK_NUM_SUBFOLDERS = 2;
 
 	private final DbxClient client;
 	private final String path;
@@ -251,6 +255,10 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 			for (DbxEntry child : listing.children) {
 				try {
+					if (!child.isFile()) {
+						continue;
+					}
+
 					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
 					remoteFiles.put(child.name, remoteFile);
 				}
@@ -271,7 +279,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	}
 
 	private String getRemoteFile(RemoteFile remoteFile) {
-		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
+		return getRemoteFilePath(remoteFile.getClass()) + "/" + folderize(remoteFile) +  remoteFile.getName();
 	}
 
 	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
@@ -293,6 +301,28 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		else {
 			return path;
 		}
+	}
+
+	private String folderize(RemoteFile remoteFile) {
+		if (!(remoteFile instanceof MultichunkRemoteFile)) {
+			return "";
+		}
+
+		Matcher matcher = MULTICHUNK_ID_PATTERN.matcher(remoteFile.getName());
+
+		if (!matcher.matches()) {
+			throw new RuntimeException("Invalid multichunk pattern found: " + remoteFile);
+		}
+
+		String multichunkId = matcher.group(1);
+		StringBuilder sb = new StringBuilder();
+
+		for (int i = 0; i < MULTICHUNK_NUM_SUBFOLDERS; i++) {
+			sb.append(multichunkId.substring(i * MULTICHUNK_ID_BYTES_PER_FOLDER, (i + 1) * MULTICHUNK_ID_BYTES_PER_FOLDER));
+			sb.append("/");
+		}
+
+		return sb.toString();
 	}
 
 	@Override
