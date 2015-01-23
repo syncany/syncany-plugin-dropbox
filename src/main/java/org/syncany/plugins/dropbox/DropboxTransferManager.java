@@ -248,25 +248,10 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			// List folder
 			String remoteFilePath = getRemoteFilePath(remoteFileClass);
 
-			DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
-
-			// Create RemoteFile objects
+			// Create RemoteFile objects recursively
 			Map<String, T> remoteFiles = new HashMap<String, T>();
 
-			for (DbxEntry child : listing.children) {
-				try {
-					if (!child.isFile()) {
-						continue;
-					}
-
-					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
-					remoteFiles.put(child.name, remoteFile);
-				}
-				catch (Exception e) {
-					logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for file " + child.name
-							+ "; maybe invalid file name pattern. Ignoring file.");
-				}
-			}
+			list(remoteFileClass, remoteFilePath, remoteFiles);
 
 			return remoteFiles;
 		}
@@ -275,6 +260,28 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 			logger.log(Level.SEVERE, "Unable to list Dropbox directory.", ex);
 			throw new StorageException(ex);
+		}
+	}
+
+	private <T extends RemoteFile> void list(Class<T> remoteFileClass, String remoteFilePath, Map<String, T> remoteFiles) throws DbxException {
+		DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
+
+		for (DbxEntry child : listing.children) {
+			try {
+				if (child.isFile()) {
+					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
+					remoteFiles.put(child.name, remoteFile);
+				}
+				else if (child.isFolder()) {
+					String subRemoteFilePath = remoteFilePath + "/" + child.name;
+					list(remoteFileClass, subRemoteFilePath, remoteFiles );
+				}
+
+			}
+			catch (Exception e) {
+				logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for item " + child.name
+								+ "; maybe invalid file name pattern. Ignoring item.", e);
+			}
 		}
 	}
 
