@@ -24,11 +24,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
@@ -44,12 +50,13 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
-
+import org.syncany.util.StringUtil;
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxException.BadResponseCode;
 import com.dropbox.core.DbxWriteMode;
+import com.google.common.collect.Lists;
 
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
@@ -72,6 +79,9 @@ import com.dropbox.core.DbxWriteMode;
  */
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
+	private static final List<Class<? extends RemoteFile>> FOLDERIZE_CLASSES = Lists.newArrayList();
+	private static final int FOLDERIZE_ID_BYTES_PER_FOLDER = 2;
+	private static final int FOLDERIZE_NUM_SUBFOLDERS = 2;
 
 	private final DbxClient client;
 	private final String path;
@@ -80,6 +90,11 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	private final String actionsPath;
 	private final String transactionsPath;
 	private final String tempPath;
+
+	static {
+		FOLDERIZE_CLASSES.add(MultichunkRemoteFile.class);
+		FOLDERIZE_CLASSES.add(TempRemoteFile.class);
+	}
 
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
@@ -98,7 +113,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public void connect() throws StorageException {
 		// make a connect
 		try {
-			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[] { client.getAccountInfo().displayName });
+			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[]{client.getAccountInfo().displayName});
 		}
 		catch (DbxException.InvalidAccessToken e) {
 			throw new StorageException("The accessToken in use is invalid", e);
@@ -147,7 +162,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 				OutputStream tempFOS = new FileOutputStream(tempFile);
 
 				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[] { remotePath, tempFile });
+					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[]{remotePath, tempFile});
 				}
 
 				client.getFile(remotePath, null, tempFOS);
@@ -156,7 +171,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 				// Move file
 				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempFile, localFile });
+					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[]{tempFile, localFile});
 				}
 
 				localFile.delete();
@@ -180,7 +195,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			InputStream fileFIS = new FileInputStream(localFile);
 
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[] { localFile, tempRemotePath });
+				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[]{localFile, tempRemotePath});
 			}
 
 			client.uploadFile(tempRemotePath, DbxWriteMode.add(), localFile.length(), fileFIS);
@@ -189,7 +204,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 			// Move
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempRemotePath, remotePath });
+				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[]{tempRemotePath, remotePath});
 			}
 
 			client.move(tempRemotePath, remotePath);
@@ -202,10 +217,24 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	@Override
 	public boolean delete(RemoteFile remoteFile) throws StorageException {
-		String remotePath = getRemoteFile(remoteFile);
+		Path remotePath = Paths.get(getRemoteFile(remoteFile));
 
 		try {
-			client.delete(remotePath);
+			client.delete(remotePath.toString());
+
+			if (isFolderizable(remoteFile.getClass())) {
+				for (int i = 0; i < FOLDERIZE_NUM_SUBFOLDERS; i++) {
+					remotePath = remotePath.getParent();
+
+					if (isEmpty(remotePath.toString())) {
+						client.delete(remotePath.toString());
+					}
+					else {
+						break;
+					}
+				}
+			}
+
 			return true;
 		}
 		catch (BadResponseCode e) {
@@ -230,7 +259,8 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		String targetRemotePath = getRemoteFile(targetFile);
 
 		try {
-			client.move(sourceRemotePath, targetRemotePath);
+			client.copy(sourceRemotePath, targetRemotePath);
+			delete(sourceFile);
 		}
 		catch (DbxException e) {
 			logger.log(Level.SEVERE, "Could not rename file " + sourceRemotePath + " to " + targetRemotePath, e);
@@ -244,21 +274,10 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			// List folder
 			String remoteFilePath = getRemoteFilePath(remoteFileClass);
 
-			DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
-
-			// Create RemoteFile objects
+			// Create RemoteFile objects recursively
 			Map<String, T> remoteFiles = new HashMap<String, T>();
 
-			for (DbxEntry child : listing.children) {
-				try {
-					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
-					remoteFiles.put(child.name, remoteFile);
-				}
-				catch (Exception e) {
-					logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for file " + child.name
-							+ "; maybe invalid file name pattern. Ignoring file.");
-				}
-			}
+			list(remoteFileClass, remoteFilePath, remoteFiles);
 
 			return remoteFiles;
 		}
@@ -270,8 +289,29 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
+	private <T extends RemoteFile> void list(Class<T> remoteFileClass, String remoteFilePath, Map<String, T> remoteFiles) throws DbxException {
+		DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
+
+		for (DbxEntry child : listing.children) {
+			try {
+				if (child.isFile()) {
+					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
+					remoteFiles.put(child.name, remoteFile);
+				}
+				else if (child.isFolder()) {
+					String subRemoteFilePath = remoteFilePath + "/" + child.name;
+					list(remoteFileClass, subRemoteFilePath, remoteFiles);
+				}
+			}
+			catch (Exception e) {
+				logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for item " + child.name
+								+ "; maybe invalid file name pattern. Ignoring item.", e);
+			}
+		}
+	}
+
 	private String getRemoteFile(RemoteFile remoteFile) {
-		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
+		return getRemoteFilePath(remoteFile.getClass()) + "/" + folderize(remoteFile) + remoteFile.getName();
 	}
 
 	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
@@ -293,6 +333,37 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		else {
 			return path;
 		}
+	}
+
+	private <T extends RemoteFile> String folderize(T remoteFile) {
+		if (!isFolderizable(remoteFile.getClass())) {
+			return "";
+		}
+
+		// we need to use the hash value of a file's name because some files aren't folderizable by default
+		String fileId = StringUtil.toHex(DigestUtils.sha256(remoteFile.getName()));
+		StringBuilder sb = new StringBuilder();
+
+		for (int i = 0; i < FOLDERIZE_NUM_SUBFOLDERS; i++) {
+			sb.append(fileId.substring(i * FOLDERIZE_ID_BYTES_PER_FOLDER, (i + 1) * FOLDERIZE_ID_BYTES_PER_FOLDER));
+			sb.append("/");
+		}
+
+		return sb.toString();
+	}
+
+	private boolean isEmpty(String remotePath) throws DbxException {
+		return client.getMetadataWithChildren(remotePath).children.size() == 0;
+	}
+
+	private boolean isFolderizable(Class<? extends RemoteFile> remoteFileClass) {
+		for (Class<? extends RemoteFile> remoteFileClassEl : FOLDERIZE_CLASSES) {
+			if (remoteFileClass.equals(remoteFileClassEl)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	@Override
