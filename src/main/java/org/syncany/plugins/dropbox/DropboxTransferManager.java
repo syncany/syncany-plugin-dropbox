@@ -50,6 +50,7 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
+import org.syncany.util.StringUtil;
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
@@ -79,7 +80,6 @@ import com.google.common.collect.Lists;
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 	private static final List<Class<? extends RemoteFile>> FOLDERIZE_CLASSES = Lists.newArrayList();
-	private static final Pattern FOLDERIZE_ID_PATTERN = Pattern.compile(".+-([a-z0-9]{40})", Pattern.CASE_INSENSITIVE);
 	private static final int FOLDERIZE_ID_BYTES_PER_FOLDER = 2;
 	private static final int FOLDERIZE_NUM_SUBFOLDERS = 2;
 
@@ -340,18 +340,8 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			return "";
 		}
 
-		/*
-		Matcher matcher = FOLDERIZE_ID_PATTERN.matcher(remoteFile.getName());
-
-		if (!matcher.matches()) {
-			throw new RuntimeException("Invalid file pattern found (not folderizable): " + remoteFile);
-		}
-
-		String fileId = matcher.group(1);
-		*/
-
 		// we need to use the hash value of a file's name because some files aren't folderizable by default
-		String fileId = Hex.encodeHexString(DigestUtils.sha256(remoteFile.getName()));
+		String fileId = StringUtil.toHex(DigestUtils.sha256(remoteFile.getName()));
 		StringBuilder sb = new StringBuilder();
 
 		for (int i = 0; i < FOLDERIZE_NUM_SUBFOLDERS; i++) {
