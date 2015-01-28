@@ -31,9 +31,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
@@ -77,7 +78,7 @@ import com.google.common.collect.Lists;
  */
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
-	private static final List<Class> FOLDERIZE_CLASSES = Lists.newArrayList();
+	private static final List<Class<? extends RemoteFile>> FOLDERIZE_CLASSES = Lists.newArrayList();
 	private static final Pattern FOLDERIZE_ID_PATTERN = Pattern.compile(".+-([a-z0-9]{40})", Pattern.CASE_INSENSITIVE);
 	private static final int FOLDERIZE_ID_BYTES_PER_FOLDER = 2;
 	private static final int FOLDERIZE_NUM_SUBFOLDERS = 2;
@@ -220,18 +221,20 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 		try {
 			client.delete(remotePath.toString());
-			
-			for (int i = 0; i < FOLDERIZE_NUM_SUBFOLDERS; i++) {
-				remotePath = remotePath.getParent();
-				
-				if (isEmpty(remotePath.toString())) {
-					client.delete(remotePath.toString());
-				}
-				else {
-					break;
+
+			if (isFolderizable(remoteFile.getClass())) {
+				for (int i = 0; i < FOLDERIZE_NUM_SUBFOLDERS; i++) {
+					remotePath = remotePath.getParent();
+
+					if (isEmpty(remotePath.toString())) {
+						client.delete(remotePath.toString());
+					}
+					else {
+						break;
+					}
 				}
 			}
-			
+
 			return true;
 		}
 		catch (BadResponseCode e) {
@@ -256,7 +259,8 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		String targetRemotePath = getRemoteFile(targetFile);
 
 		try {
-			client.move(sourceRemotePath, targetRemotePath);
+			client.copy(sourceRemotePath, targetRemotePath);
+			delete(sourceFile);
 		}
 		catch (DbxException e) {
 			logger.log(Level.SEVERE, "Could not rename file " + sourceRemotePath + " to " + targetRemotePath, e);
@@ -331,11 +335,12 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
-	private String folderize(RemoteFile remoteFile) {
-		if (!FOLDERIZE_CLASSES.contains(remoteFile.getClass())) {
+	private <T extends RemoteFile> String folderize(T remoteFile) {
+		if (!isFolderizable(remoteFile.getClass())) {
 			return "";
 		}
 
+		/*
 		Matcher matcher = FOLDERIZE_ID_PATTERN.matcher(remoteFile.getName());
 
 		if (!matcher.matches()) {
@@ -343,6 +348,10 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 
 		String fileId = matcher.group(1);
+		*/
+
+		// we need to use the hash value of a file's name because some files aren't folderizable by default
+		String fileId = Hex.encodeHexString(DigestUtils.sha256(remoteFile.getName()));
 		StringBuilder sb = new StringBuilder();
 
 		for (int i = 0; i < FOLDERIZE_NUM_SUBFOLDERS; i++) {
@@ -352,9 +361,19 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 		return sb.toString();
 	}
-	
+
 	private boolean isEmpty(String remotePath) throws DbxException {
 		return client.getMetadataWithChildren(remotePath).children.size() == 0;
+	}
+
+	private boolean isFolderizable(Class<? extends RemoteFile> remoteFileClass) {
+		for (Class<? extends RemoteFile> remoteFileClassEl : FOLDERIZE_CLASSES) {
+			if (remoteFileClass.equals(remoteFileClassEl)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	@Override
