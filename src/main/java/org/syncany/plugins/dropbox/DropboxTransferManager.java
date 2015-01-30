@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,6 +33,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
+import org.syncany.plugins.transfer.FolderizableTransferManager;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
@@ -44,7 +46,6 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
-
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
@@ -70,7 +71,7 @@ import com.dropbox.core.DbxWriteMode;
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class DropboxTransferManager extends AbstractTransferManager {
+public class DropboxTransferManager extends AbstractTransferManager implements FolderizableTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
 	private final DbxClient client;
@@ -173,7 +174,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public void upload(File localFile, RemoteFile remoteFile) throws StorageException {
 		String remotePath = getRemoteFile(remoteFile);
-		String tempRemotePath = path + "/temp-" + remoteFile.getName();
+		String tempRemotePath = path + "/temp-" + remoteFile.getSimpleName();
 
 		try {
 			// Upload to temp file
@@ -205,7 +206,20 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		String remotePath = getRemoteFile(remoteFile);
 
 		try {
-			client.delete(remotePath);
+			client.delete(remotePath.toString());
+
+			if (getFolderizableFiles().contains(remoteFile.getClass())) {
+				for (int i = 0; i < getSubfolderDepth(); i++) {
+					remotePath = remotePath.getParent();
+
+					if (isEmpty(remotePath.toString())) {
+						client.delete(remotePath.toString());
+					}
+					else {
+						break;
+					}
+				}
+			}
 			return true;
 		}
 		catch (BadResponseCode e) {
@@ -293,6 +307,10 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		else {
 			return path;
 		}
+	}
+
+	private boolean isEmpty(String remotePath) throws DbxException {
+		return client.getMetadataWithChildren(remotePath).children.size() == 0;
 	}
 
 	@Override
@@ -388,5 +406,26 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			logger.log(Level.INFO, "testRepoFileExists: Exception when trying to check repo file existence.", e);
 			return false;
 		}
+	}
+
+	@Override
+	public int getBytesPerFolder() {
+		return FolderizableTransferManager.BYTES_PER_FOLDER;
+	}
+
+	@Override
+	public int getSubfolderDepth() {
+		return FolderizableTransferManager.SUBFOLDER_DEPTH;
+	}
+
+	@Override
+	public List<Class<? extends RemoteFile>> getFolderizableFiles() {
+		return FolderizableTransferManager.FOLDERIZABLE_FILES;
+	}
+
+	@Override
+	public boolean createPathIfRequired(RemoteFile remoteFile) {
+		// dropbox creates folderpaths on the fly so we dont need to create them manually
+		return true;
 	}
 }
