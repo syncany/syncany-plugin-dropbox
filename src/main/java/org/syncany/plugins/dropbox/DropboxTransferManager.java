@@ -24,6 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -203,7 +205,7 @@ public class DropboxTransferManager extends AbstractTransferManager implements F
 
 	@Override
 	public boolean delete(RemoteFile remoteFile) throws StorageException {
-		String remotePath = getRemoteFile(remoteFile);
+		Path remotePath = Paths.get(getRemoteFile(remoteFile));
 
 		try {
 			client.delete(remotePath.toString());
