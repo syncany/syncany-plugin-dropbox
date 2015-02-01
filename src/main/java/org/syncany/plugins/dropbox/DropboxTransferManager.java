@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
-import org.syncany.plugins.transfer.FolderizableTransferManager;
+import org.syncany.plugins.transfer.Folderable;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
@@ -65,7 +65,7 @@ import com.dropbox.core.DbxWriteMode;
  * <p/>
  * <ul>
  * <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
- * <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
+ * <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultichunkRemoteFile}s</li>
  * </ul>
  * <p/>
  * <p>All operations are auto-connected, i.e. a connection is automatically
@@ -73,7 +73,7 @@ import com.dropbox.core.DbxWriteMode;
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class DropboxTransferManager extends AbstractTransferManager implements FolderizableTransferManager {
+public class DropboxTransferManager extends AbstractTransferManager implements Folderable {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
 	private final DbxClient client;
@@ -176,7 +176,7 @@ public class DropboxTransferManager extends AbstractTransferManager implements F
 	@Override
 	public void upload(File localFile, RemoteFile remoteFile) throws StorageException {
 		String remotePath = getRemoteFile(remoteFile);
-		String tempRemotePath = path + "/temp-" + remoteFile.getSimpleName();
+		String tempRemotePath = path + "/temp-" + remoteFile.getSimpleName(); // getName() will return the folderized path
 
 		try {
 			// Upload to temp file
@@ -412,17 +412,17 @@ public class DropboxTransferManager extends AbstractTransferManager implements F
 
 	@Override
 	public int getBytesPerFolder() {
-		return FolderizableTransferManager.BYTES_PER_FOLDER;
+		return Folderable.BYTES_PER_FOLDER;
 	}
 
 	@Override
 	public int getSubfolderDepth() {
-		return FolderizableTransferManager.SUBFOLDER_DEPTH;
+		return Folderable.SUBFOLDER_DEPTH;
 	}
 
 	@Override
 	public List<Class<? extends RemoteFile>> getFolderizableFiles() {
-		return FolderizableTransferManager.FOLDERIZABLE_FILES;
+		return Folderable.FOLDERIZABLE_FILES;
 	}
 
 	@Override
