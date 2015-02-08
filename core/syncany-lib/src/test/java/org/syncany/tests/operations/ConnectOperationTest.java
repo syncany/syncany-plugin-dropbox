@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com>
+ * Copyright (C) 2011-2015 Philipp C. Heckel <philipp.heckel@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.syncany.tests.operations;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.Random;
@@ -35,11 +40,6 @@ import org.syncany.operations.init.InitOperationResult;
 import org.syncany.plugins.local.LocalTransferSettings;
 import org.syncany.tests.util.TestConfigUtil;
 import org.syncany.tests.util.TestFileUtil;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * This test goes through the creation of a local repo and verifies
@@ -127,6 +127,51 @@ public class ConnectOperationTest {
 		assertFalse(new File(localConnectDirB, Config.FILE_CONFIG).exists());
 		assertFalse(new File(localConnectDirB, Config.DIR_LOG).exists());
 		assertFalse(new File(localConnectDirB, Config.FILE_REPO).exists());
+
+		File repoDir = ((LocalTransferSettings) initOperationOptionsA.getConfigTO().getTransferSettings()).getPath();
+
+		// Tear down
+		TestFileUtil.deleteDirectory(repoDir);
+		TestFileUtil.deleteDirectory(localConnectDirB);
+		TestFileUtil.deleteDirectory(initOperationOptionsA.getLocalDir());
+	}
+
+	@Test
+	public void testConnectOperationWithLink() throws Exception {
+		// A.init()
+		InitOperationOptions initOperationOptionsA = TestConfigUtil.createTestInitOperationOptions("A");
+		InitOperation initOperationA = new InitOperation(initOperationOptionsA, null);
+
+		InitOperationResult initOperationResultA = initOperationA.execute();
+
+		String connectLinkA = initOperationResultA.getGenLinkResult().getShareLink();
+		assertNotNull(connectLinkA);
+
+		// B.connect()
+		File localDirB = TestFileUtil.createTempDirectoryInSystemTemp(TestConfigUtil.createUniqueName("clientB", initOperationOptionsA));
+		File localConnectDirB = new File(localDirB, Config.DIR_APPLICATION);
+
+		ConfigTO connectionConfigToB = initOperationOptionsA.getConfigTO();
+		connectionConfigToB.setMachineName("clientB" + Math.abs(new Random().nextInt()));
+		connectionConfigToB.setMasterKey(null);
+
+		ConnectOperationOptions connectOperationOptionsB = new ConnectOperationOptions();
+		connectOperationOptionsB.setStrategy(ConnectOptionsStrategy.CONNECTION_LINK);
+		connectOperationOptionsB.setConnectLink(connectLinkA);
+		connectOperationOptionsB.setConfigTO(connectionConfigToB);
+		connectOperationOptionsB.setPassword(initOperationOptionsA.getPassword());
+		connectOperationOptionsB.setLocalDir(localDirB);
+
+		ConnectOperation connectOperationB = new ConnectOperation(connectOperationOptionsB, null);
+		ConnectOperationResult connectOperationResultB = connectOperationB.execute();
+
+		assertEquals(ConnectResultCode.OK, connectOperationResultB.getResultCode());
+		assertTrue(new File(localConnectDirB, Config.DIR_DATABASE).exists());
+		assertTrue(new File(localConnectDirB, Config.DIR_CACHE).exists());
+		assertTrue(new File(localConnectDirB, Config.FILE_CONFIG).exists());
+		assertTrue(new File(localConnectDirB, Config.DIR_LOG).exists());
+		assertTrue(new File(localConnectDirB, Config.FILE_REPO).exists());
+		assertEquals(new File(localConnectDirB, Config.FILE_MASTER).exists(), TestConfigUtil.getCrypto());
 
 		File repoDir = ((LocalTransferSettings) initOperationOptionsA.getConfigTO().getTransferSettings()).getPath();
 
