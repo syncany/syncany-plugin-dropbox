@@ -17,10 +17,8 @@
  */
 package org.syncany.plugins.transfer;
 
-/**
- * @author pheckel
- *
- */
-public interface TransferManagerFeature {
-	// Nothing.
+import org.syncany.plugins.transfer.files.RemoteFile;
+
+public interface PathAwareCreatePathHandler {
+	public boolean createPathIfRequired(RemoteFile remoteFile);
 }

@@ -17,23 +17,19 @@
  */
 package org.syncany.plugins.transfer;
 
-import java.util.List;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 import org.syncany.plugins.transfer.files.RemoteFile;
 
-/**
- * @author Christian Roth <christian.roth@port17.de>
- */
-
-public interface PathAwareTransferManagerFeature extends TransferManagerFeature {
-	public int getBytesPerFolder();
-
-	public int getSubfolderDepth();
-
-	public char getFolderSeperator();
-
-	public List<Class<? extends RemoteFile>> getFolderizableFiles();
-
-	public boolean createPathIfRequired(RemoteFile remoteFile);
-
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PathAware {
+	int bytesPerFolder();
+	int subfolderDepth();
+	char folderSeparator();
+	Class<? extends RemoteFile>[] affected();
+	Class<? extends PathAwareCreatePathHandler> createPathHandler() default PathAwareCreatePathHandler.class;
 }

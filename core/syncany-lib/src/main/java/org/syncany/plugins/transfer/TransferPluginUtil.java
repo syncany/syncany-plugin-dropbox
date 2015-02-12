@@ -126,7 +126,7 @@ public abstract class TransferPluginUtil {
 			return null;
 		}		
 	}
-
+	
 	private static String getPluginPackageName(Class<?> clazz) {
 		Matcher matcher = PLUGIN_PACKAGE_NAME_PATTERN.matcher(clazz.getPackage().getName());
 

@@ -18,6 +18,8 @@
 package org.syncany.plugins.transfer;
 
 import java.io.File;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -35,11 +37,40 @@ public class PathAwareTransferManager implements TransferManager {
 	private static final Logger logger = Logger.getLogger(PathAwareTransferManager.class.getSimpleName());
 
 	private final TransferManager underlyingTransferManager;
-	private final PathAwareTransferManagerFeature pathAwareFeature;
+	private final PathAware pathAwareAnnotation;
+	private final PathAwareCreatePathHandler pathAwareCreatePathHandler;	
 
-	public PathAwareTransferManager(TransferManager underlyingTransferManager, PathAwareTransferManagerFeature pathAwareFeature) {
+	public PathAwareTransferManager(TransferManager underlyingTransferManager) {
 		this.underlyingTransferManager = underlyingTransferManager;
-		this.pathAwareFeature = pathAwareFeature;
+		this.pathAwareAnnotation = getPathAwareAnnotation(underlyingTransferManager);
+		this.pathAwareCreatePathHandler = getPathAwareCreatePathHandler(pathAwareAnnotation);
+	}
+
+	private PathAware getPathAwareAnnotation(TransferManager transferManager) {
+		Class<? extends TransferManager> transferManagerClass = transferManager.getClass();
+		PathAware pathAwareAnnotation = transferManagerClass.getAnnotation(PathAware.class);
+		
+		if (pathAwareAnnotation == null) {
+			throw new RuntimeException("Cannot instantiate PathAwareTransferManager without PathAware annotation.");
+		}
+		
+		return pathAwareAnnotation;
+	}
+	
+	private PathAwareCreatePathHandler getPathAwareCreatePathHandler(PathAware pathAwareAnnotation) {
+		Class<? extends PathAwareCreatePathHandler> createPathHandlerClass = pathAwareAnnotation.createPathHandler();
+		
+		if (createPathHandlerClass != null && !Modifier.isAbstract(createPathHandlerClass.getModifiers())) {
+			try {
+				return createPathHandlerClass.newInstance();
+			}
+			catch (InstantiationException | IllegalAccessException e) {
+				throw new RuntimeException("Cannot instantiate PathAwareCreatePathHandler.", e);
+			}			
+		}
+		else {
+			return null;
+		}
 	}
 
 	@Override
@@ -66,7 +97,7 @@ public class PathAwareTransferManager implements TransferManager {
 	public void move(final RemoteFile sourceFile, final RemoteFile targetFile) throws StorageException {
 		final RemoteFile pathAwareTargetFile = createPathAwareRemoteFile(targetFile);
 
-		if (!pathAwareFeature.createPathIfRequired(pathAwareTargetFile)) {
+		if (pathAwareCreatePathHandler != null && pathAwareCreatePathHandler.createPathIfRequired(pathAwareTargetFile)) {
 			throw new StorageException("Unable to create path for " + pathAwareTargetFile);
 		}
 
@@ -77,7 +108,7 @@ public class PathAwareTransferManager implements TransferManager {
 	public void upload(final File localFile, final RemoteFile remoteFile) throws StorageException {
 		final RemoteFile pathAwareRemoteFile = createPathAwareRemoteFile(remoteFile);
 
-		if (!pathAwareFeature.createPathIfRequired(pathAwareRemoteFile)) {
+		if (pathAwareCreatePathHandler != null && pathAwareCreatePathHandler.createPathIfRequired(pathAwareRemoteFile)) {
 			throw new StorageException("Unable to create path for " + pathAwareRemoteFile);
 		}
 
@@ -120,7 +151,7 @@ public class PathAwareTransferManager implements TransferManager {
 	}
 
 	private boolean isFolderizable(Class<? extends RemoteFile> remoteFileClass) {
-		return pathAwareFeature.getFolderizableFiles().contains(remoteFileClass);
+		return Arrays.asList(pathAwareAnnotation.affected()).contains(remoteFileClass);
 	}
 
 	private RemoteFile createPathAwareRemoteFile(RemoteFile remoteFile) throws StorageException {
@@ -132,9 +163,9 @@ public class PathAwareTransferManager implements TransferManager {
 		String fileId = StringUtil.toHex(Hashing.murmur3_128().hashString(remoteFile.getSimpleName(), Charsets.UTF_8).asBytes());
 		StringBuilder path = new StringBuilder();
 
-		for (int i = 0; i < pathAwareFeature.getSubfolderDepth(); i++) {
-			path.append(fileId.substring(i * pathAwareFeature.getBytesPerFolder(), (i + 1) * pathAwareFeature.getBytesPerFolder()));
-			path.append(pathAwareFeature.getFolderSeperator());
+		for (int i = 0; i < pathAwareAnnotation.subfolderDepth(); i++) {
+			path.append(fileId.substring(i * pathAwareAnnotation.bytesPerFolder(), (i + 1) * pathAwareAnnotation.bytesPerFolder()));
+			path.append(pathAwareAnnotation.folderSeparator());
 		}
 
 		return RemoteFile.createRemoteFileWithPath(remoteFile.getSimpleName(), path.toString(), remoteFile.getClass());

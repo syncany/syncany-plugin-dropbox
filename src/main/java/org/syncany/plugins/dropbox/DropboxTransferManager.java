@@ -27,7 +27,6 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,7 +34,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
-import org.syncany.plugins.transfer.PathAwareTransferManagerFeature;
+import org.syncany.plugins.transfer.PathAware;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
@@ -54,7 +53,6 @@ import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxException.BadResponseCode;
 import com.dropbox.core.DbxWriteMode;
-import com.google.common.collect.ImmutableList;
 
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
@@ -75,14 +73,9 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class DropboxTransferManager extends AbstractTransferManager implements PathAwareTransferManagerFeature {
+@PathAware(bytesPerFolder = 2, subfolderDepth = 2, folderSeparator = '/', affected = { MultichunkRemoteFile.class, TempRemoteFile.class })
+public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
-
-	private static final int BYTES_PER_FOLDER = 2;
-	private static final int SUBFOLDER_DEPTH = 2;
-	private static final char FOLDER_SEPARATOR = '/';
-	private static final List<Class<? extends RemoteFile>> FOLDERIZABLE_REMOTE_FILE_CLASSES =
-			ImmutableList.<Class<? extends RemoteFile>> builder().add(MultichunkRemoteFile.class).add(TempRemoteFile.class).build();
 
 	private final DbxClient client;
 	private final String path;
@@ -217,7 +210,7 @@ public class DropboxTransferManager extends AbstractTransferManager implements P
 
 		try {
 			client.delete(remotePath.toString());
-
+/*
 			if (getFolderizableFiles().contains(remoteFile.getClass())) {
 				logger.log(Level.FINE, "Cleaning up folder for file " + remoteFile);
 				for (int i = 0; i < getSubfolderDepth(); i++) {
@@ -230,7 +223,7 @@ public class DropboxTransferManager extends AbstractTransferManager implements P
 						break;
 					}
 				}
-			}
+			}*/
 			return true;
 		}
 		catch (BadResponseCode e) {
@@ -428,33 +421,5 @@ public class DropboxTransferManager extends AbstractTransferManager implements P
 			logger.log(Level.INFO, "testRepoFileExists: Exception when trying to check repo file existence.", e);
 			return false;
 		}
-	}
-
-	@Override
-	public int getBytesPerFolder() {
-		return BYTES_PER_FOLDER;
-	}
-
-	@Override
-	public int getSubfolderDepth() {
-		return SUBFOLDER_DEPTH;
-	}
-
-	@Override
-	public List<Class<? extends RemoteFile>> getFolderizableFiles() {
-		return FOLDERIZABLE_REMOTE_FILE_CLASSES;
-	}
-
-	@Override
-	public char getFolderSeperator() {		
-		return FOLDER_SEPARATOR;
-	}
-
-	@Override
-	public boolean createPathIfRequired(RemoteFile remoteFile) {
-		// Dropbox creates folder paths on the fly so we don't
-		// need to create them manually
-		
-		return true;
 	}
 }
