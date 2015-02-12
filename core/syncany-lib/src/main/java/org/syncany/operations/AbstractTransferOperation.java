@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 import org.syncany.config.Config;
 import org.syncany.config.LocalEventBus;
-import org.syncany.plugins.transfer.PathAware;
+import org.syncany.plugins.transfer.PathAwareTransferManagerFeature;
 import org.syncany.plugins.transfer.PathAwareTransferManager;
 import org.syncany.plugins.transfer.RetriableTransferManager;
 import org.syncany.plugins.transfer.StorageException;
@@ -90,9 +90,9 @@ public abstract class AbstractTransferOperation extends Operation {
 	private TransferManager createTransferManager(Config config) throws StorageException {
 		TransferManager pluginTransferManager = config.getTransferPlugin().createTransferManager(config.getConnection(), config);
 
-		if (pluginTransferManager instanceof PathAware) {
+		if (pluginTransferManager instanceof PathAwareTransferManagerFeature) {
 			logger.log(Level.INFO, "Creating FolderAwareTransferManager");
-			return new PathAwareTransferManager((PathAware) pluginTransferManager);
+			return new PathAwareTransferManager(pluginTransferManager, (PathAwareTransferManagerFeature) pluginTransferManager);
 		}
 
 		return pluginTransferManager;

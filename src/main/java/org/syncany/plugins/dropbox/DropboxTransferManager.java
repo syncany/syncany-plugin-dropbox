@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
-import org.syncany.plugins.transfer.Folderable;
+import org.syncany.plugins.transfer.PathAwareTransferManagerFeature;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
@@ -48,11 +48,13 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
+
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxException.BadResponseCode;
 import com.dropbox.core.DbxWriteMode;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
@@ -73,8 +75,14 @@ import com.dropbox.core.DbxWriteMode;
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class DropboxTransferManager extends AbstractTransferManager implements Folderable {
+public class DropboxTransferManager extends AbstractTransferManager implements PathAwareTransferManagerFeature {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
+
+	private static final int BYTES_PER_FOLDER = 2;
+	private static final int SUBFOLDER_DEPTH = 2;
+	private static final char FOLDER_SEPARATOR = '/';
+	private static final List<Class<? extends RemoteFile>> FOLDERIZABLE_REMOTE_FILE_CLASSES =
+			ImmutableList.<Class<? extends RemoteFile>> builder().add(MultichunkRemoteFile.class).add(TempRemoteFile.class).build();
 
 	private final DbxClient client;
 	private final String path;
@@ -424,22 +432,29 @@ public class DropboxTransferManager extends AbstractTransferManager implements F
 
 	@Override
 	public int getBytesPerFolder() {
-		return Folderable.BYTES_PER_FOLDER;
+		return BYTES_PER_FOLDER;
 	}
 
 	@Override
 	public int getSubfolderDepth() {
-		return Folderable.SUBFOLDER_DEPTH;
+		return SUBFOLDER_DEPTH;
 	}
 
 	@Override
 	public List<Class<? extends RemoteFile>> getFolderizableFiles() {
-		return Folderable.FOLDERIZABLE_FILES;
+		return FOLDERIZABLE_REMOTE_FILE_CLASSES;
+	}
+
+	@Override
+	public char getFolderSeperator() {		
+		return FOLDER_SEPARATOR;
 	}
 
 	@Override
 	public boolean createPathIfRequired(RemoteFile remoteFile) {
-		// dropbox creates folderpaths on the fly so we dont need to create them manually
+		// Dropbox creates folder paths on the fly so we don't
+		// need to create them manually
+		
 		return true;
 	}
 }

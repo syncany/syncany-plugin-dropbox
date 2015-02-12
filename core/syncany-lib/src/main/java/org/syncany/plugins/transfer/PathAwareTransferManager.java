@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 
 import org.syncany.plugins.transfer.files.RemoteFile;
 import org.syncany.util.StringUtil;
+
 import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
 
@@ -33,10 +34,12 @@ import com.google.common.hash.Hashing;
 public class PathAwareTransferManager implements TransferManager {
 	private static final Logger logger = Logger.getLogger(PathAwareTransferManager.class.getSimpleName());
 
-	private final PathAware underlyingTransferManager;
+	private final TransferManager underlyingTransferManager;
+	private final PathAwareTransferManagerFeature pathAwareFeature;
 
-	public PathAwareTransferManager(PathAware underlyingTransferManager) {
+	public PathAwareTransferManager(TransferManager underlyingTransferManager, PathAwareTransferManagerFeature pathAwareFeature) {
 		this.underlyingTransferManager = underlyingTransferManager;
+		this.pathAwareFeature = pathAwareFeature;
 	}
 
 	@Override
@@ -63,7 +66,7 @@ public class PathAwareTransferManager implements TransferManager {
 	public void move(final RemoteFile sourceFile, final RemoteFile targetFile) throws StorageException {
 		final RemoteFile pathAwareTargetFile = createPathAwareRemoteFile(targetFile);
 
-		if (!underlyingTransferManager.createPathIfRequired(pathAwareTargetFile)) {
+		if (!pathAwareFeature.createPathIfRequired(pathAwareTargetFile)) {
 			throw new StorageException("Unable to create path for " + pathAwareTargetFile);
 		}
 
@@ -74,7 +77,7 @@ public class PathAwareTransferManager implements TransferManager {
 	public void upload(final File localFile, final RemoteFile remoteFile) throws StorageException {
 		final RemoteFile pathAwareRemoteFile = createPathAwareRemoteFile(remoteFile);
 
-		if (!underlyingTransferManager.createPathIfRequired(pathAwareRemoteFile)) {
+		if (!pathAwareFeature.createPathIfRequired(pathAwareRemoteFile)) {
 			throw new StorageException("Unable to create path for " + pathAwareRemoteFile);
 		}
 
@@ -87,7 +90,6 @@ public class PathAwareTransferManager implements TransferManager {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public <T extends RemoteFile> Map<String, T> list(final Class<T> remoteFileClass) throws StorageException {
 		return underlyingTransferManager.list(remoteFileClass);
 	}
@@ -118,7 +120,7 @@ public class PathAwareTransferManager implements TransferManager {
 	}
 
 	private boolean isFolderizable(Class<? extends RemoteFile> remoteFileClass) {
-		return underlyingTransferManager.getFolderizableFiles().contains(remoteFileClass);
+		return pathAwareFeature.getFolderizableFiles().contains(remoteFileClass);
 	}
 
 	private RemoteFile createPathAwareRemoteFile(RemoteFile remoteFile) throws StorageException {
@@ -130,9 +132,9 @@ public class PathAwareTransferManager implements TransferManager {
 		String fileId = StringUtil.toHex(Hashing.murmur3_128().hashString(remoteFile.getSimpleName(), Charsets.UTF_8).asBytes());
 		StringBuilder path = new StringBuilder();
 
-		for (int i = 0; i < underlyingTransferManager.getSubfolderDepth(); i++) {
-			path.append(fileId.substring(i * underlyingTransferManager.getBytesPerFolder(), (i + 1) * underlyingTransferManager.getBytesPerFolder()));
-			path.append(underlyingTransferManager.getFolderSeperator());
+		for (int i = 0; i < pathAwareFeature.getSubfolderDepth(); i++) {
+			path.append(fileId.substring(i * pathAwareFeature.getBytesPerFolder(), (i + 1) * pathAwareFeature.getBytesPerFolder()));
+			path.append(pathAwareFeature.getFolderSeperator());
 		}
 
 		return RemoteFile.createRemoteFileWithPath(remoteFile.getSimpleName(), path.toString(), remoteFile.getClass());

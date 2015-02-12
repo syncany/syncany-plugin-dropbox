@@ -19,19 +19,13 @@ package org.syncany.plugins.transfer;
 
 import java.util.List;
 
-import org.syncany.plugins.transfer.files.MultichunkRemoteFile;
 import org.syncany.plugins.transfer.files.RemoteFile;
-import org.syncany.plugins.transfer.files.TempRemoteFile;
-import com.google.common.collect.ImmutableList;
 
 /**
  * @author Christian Roth <christian.roth@port17.de>
  */
 
-public interface PathAware extends TransferManager {
-
-	public static final List<Class<? extends RemoteFile>> FOLDERIZABLE_FILES = ImmutableList.<Class<? extends RemoteFile>>builder().add(MultichunkRemoteFile.class).add(TempRemoteFile.class).build();
-
+public interface PathAwareTransferManagerFeature extends TransferManagerFeature {
 	public int getBytesPerFolder();
 
 	public int getSubfolderDepth();
