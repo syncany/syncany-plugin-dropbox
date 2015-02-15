@@ -30,11 +30,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
+import org.simpleframework.xml.Path;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
+import org.syncany.plugins.transfer.FileType;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
+import org.syncany.plugins.transfer.feature.PathAware;
+import org.syncany.plugins.transfer.feature.PathAwareFeatureExtension;
 import org.syncany.plugins.transfer.files.ActionRemoteFile;
 import org.syncany.plugins.transfer.files.CleanupRemoteFile;
 import org.syncany.plugins.transfer.files.DatabaseRemoteFile;
@@ -44,12 +48,12 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
-
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxException.BadResponseCode;
 import com.dropbox.core.DbxWriteMode;
+import com.google.common.collect.Maps;
 
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
@@ -70,6 +74,7 @@ import com.dropbox.core.DbxWriteMode;
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
+@PathAware(bytesPerFolder = 2, subfolderDepth = 2, folderSeparator = '/', affected = {MultichunkRemoteFile.class, TempRemoteFile.class}, extension = DropboxTransferManager.DropboxTransferManagerFeatureExtension.class)
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
@@ -98,7 +103,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public void connect() throws StorageException {
 		// make a connect
 		try {
-			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[] { client.getAccountInfo().displayName });
+			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[]{client.getAccountInfo().displayName});
 		}
 		catch (DbxException.InvalidAccessToken e) {
 			throw new StorageException("The accessToken in use is invalid", e);
@@ -147,7 +152,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 				OutputStream tempFOS = new FileOutputStream(tempFile);
 
 				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[] { remotePath, tempFile });
+					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[]{remotePath, tempFile});
 				}
 
 				client.getFile(remotePath, null, tempFOS);
@@ -156,7 +161,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 				// Move file
 				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempFile, localFile });
+					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[]{tempFile, localFile});
 				}
 
 				localFile.delete();
@@ -180,7 +185,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			InputStream fileFIS = new FileInputStream(localFile);
 
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[] { localFile, tempRemotePath });
+				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[]{localFile, tempRemotePath});
 			}
 
 			client.uploadFile(tempRemotePath, DbxWriteMode.add(), localFile.length(), fileFIS);
@@ -189,7 +194,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 			// Move
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempRemotePath, remotePath });
+				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[]{tempRemotePath, remotePath});
 			}
 
 			client.move(tempRemotePath, remotePath);
@@ -240,41 +245,12 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	@Override
 	public <T extends RemoteFile> Map<String, T> list(Class<T> remoteFileClass) throws StorageException {
-		try {
-			// List folder
-			String remoteFilePath = getRemoteFilePath(remoteFileClass);
-
-			DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
-
-			// Create RemoteFile objects
-			Map<String, T> remoteFiles = new HashMap<String, T>();
-
-			for (DbxEntry child : listing.children) {
-				try {
-					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
-					remoteFiles.put(child.name, remoteFile);
-				}
-				catch (Exception e) {
-					logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for file " + child.name
-							+ "; maybe invalid file name pattern. Ignoring file.");
-				}
-			}
-
-			return remoteFiles;
-		}
-		catch (DbxException ex) {
-			disconnect();
-
-			logger.log(Level.SEVERE, "Unable to list Dropbox directory.", ex);
-			throw new StorageException(ex);
-		}
+		// TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)
+		return null;
 	}
 
-	private String getRemoteFile(RemoteFile remoteFile) {
-		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
-	}
-
-	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
+	@Override
+	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
 		if (remoteFile.equals(MultichunkRemoteFile.class)) {
 			return multichunksPath;
 		}
@@ -293,6 +269,10 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		else {
 			return path;
 		}
+	}
+
+	private String getRemoteFile(RemoteFile remoteFile) {
+		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
 	}
 
 	@Override
@@ -387,6 +367,75 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		catch (Exception e) {
 			logger.log(Level.INFO, "testRepoFileExists: Exception when trying to check repo file existence.", e);
 			return false;
+		}
+	}
+
+	private int getSubfolderDepth() {
+		return this.getClass().getAnnotation(PathAware.class).subfolderDepth();
+	}
+
+	private char getFolderSeperator() {
+		return this.getClass().getAnnotation(PathAware.class).folderSeparator();
+	}
+
+	public static class DropboxTransferManagerFeatureExtension implements PathAwareFeatureExtension {
+
+		@Override
+		public boolean createPath(String path) throws StorageException {
+			// Dropbox always creates a path structure implicitly.
+			return true;
+		}
+
+		@Override
+		public boolean removeEmptyFolder(String path) throws StorageException {
+			logger.log(Level.FINE, "Cleaning up folder " + path);
+
+			try {
+				for (int i = 0; i < getSubfolderDepth(); i++) {
+
+					if (isEmpty(path)) {
+						client.delete(path);
+						path = path.substring(0, path.lastIndexOf(getFolderSeperator()));
+					}
+					else {
+						break;
+					}
+				}
+			}
+			catch (DbxException e) {
+				logger.log(Level.SEVERE, "Unable to delete remote path", e);
+				throw new StorageException("Unable to delete remote path", e);
+			}
+
+			return false;
+		}
+
+		@Override
+		public Map<FileType, String> listFolder(String path) throws StorageException {
+			Map<FileType, String> contents = Maps.newHashMap();
+
+			try {
+				DbxEntry.WithChildren listing = client.getMetadataWithChildren(path);
+
+				for (DbxEntry child : listing.children) {
+					if (child.isFile()) {
+						contents.put(FileType.FILE, child.name);
+					}
+					else if (child.isFolder()) {
+						contents.put(FileType.FOLDER, child.name);
+					}
+				}
+			}
+			catch (DbxException e) {
+				logger.log(Level.SEVERE, "Unable to list folder", e);
+				throw new StorageException("Unable to list folder", e);
+			}
+
+			return contents;
+		}
+
+		private boolean isEmpty(String path) throws DbxException {
+			return client.getMetadataWithChildren(path).children.size() == 0;
 		}
 	}
 }
