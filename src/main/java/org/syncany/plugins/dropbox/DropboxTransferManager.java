@@ -393,7 +393,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 
 		@Override
-		public boolean createFolder(String path) throws StorageException {
+		public boolean createPath(String path) throws StorageException {
 			// Dropbox always creates a path structure implicitly.
 			return true;
 		}
@@ -415,6 +415,8 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 		@Override
 		public Map<FileType, String> listFolder(String path) throws StorageException {
+			logger.log(Level.FINE, "Listing folder " + path);
+
 			Map<FileType, String> contents = Maps.newHashMap();
 
 			try {
@@ -435,10 +437,6 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			}
 
 			return contents;
-		}
-
-		private boolean isEmpty(String path) throws DbxException {
-			return transferManager.client.getMetadataWithChildren(path).children.size() == 0;
 		}
 	}
 }
