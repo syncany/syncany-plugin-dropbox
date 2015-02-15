@@ -24,13 +24,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
-import org.simpleframework.xml.Path;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
 import org.syncany.plugins.transfer.FileType;
@@ -246,7 +244,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public <T extends RemoteFile> Map<String, T> list(Class<T> remoteFileClass) throws StorageException {
 		// TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)
-		return null;
+		throw new UnsupportedOperationException("Extension is path aware! Hence, TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)");
 	}
 
 	@Override
@@ -380,6 +378,12 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	public static class DropboxTransferManagerFeatureExtension implements PathAwareFeatureExtension {
 
+		private final DropboxTransferManager transferManager;
+
+		public DropboxTransferManagerFeatureExtension(DropboxTransferManager transferManager) {
+			this.transferManager = transferManager;
+		}
+
 		@Override
 		public boolean createPath(String path) throws StorageException {
 			// Dropbox always creates a path structure implicitly.
@@ -391,11 +395,11 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			logger.log(Level.FINE, "Cleaning up folder " + path);
 
 			try {
-				for (int i = 0; i < getSubfolderDepth(); i++) {
+				for (int i = 0; i < transferManager.getSubfolderDepth(); i++) {
 
 					if (isEmpty(path)) {
-						client.delete(path);
-						path = path.substring(0, path.lastIndexOf(getFolderSeperator()));
+						transferManager.client.delete(path);
+						path = path.substring(0, path.lastIndexOf(transferManager.getFolderSeperator()));
 					}
 					else {
 						break;
@@ -415,7 +419,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			Map<FileType, String> contents = Maps.newHashMap();
 
 			try {
-				DbxEntry.WithChildren listing = client.getMetadataWithChildren(path);
+				DbxEntry.WithChildren listing = transferManager.client.getMetadataWithChildren(path);
 
 				for (DbxEntry child : listing.children) {
 					if (child.isFile()) {
@@ -435,7 +439,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 
 		private boolean isEmpty(String path) throws DbxException {
-			return client.getMetadataWithChildren(path).children.size() == 0;
+			return transferManager.client.getMetadataWithChildren(path).children.size() == 0;
 		}
 	}
 }
