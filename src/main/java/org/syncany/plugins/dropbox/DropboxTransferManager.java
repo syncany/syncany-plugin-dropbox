@@ -414,20 +414,20 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 
 		@Override
-		public Map<FileType, String> listFolder(String path) throws StorageException {
+		public Map<String, FileType> listFolder(String path) throws StorageException {
 			logger.log(Level.FINE, "Listing folder " + path);
 
-			Map<FileType, String> contents = Maps.newHashMap();
+			Map<String, FileType> contents = Maps.newHashMap();
 
 			try {
 				DbxEntry.WithChildren listing = transferManager.client.getMetadataWithChildren(path);
 
 				for (DbxEntry child : listing.children) {
 					if (child.isFile()) {
-						contents.put(FileType.FILE, child.name);
+						contents.put(child.name, FileType.FILE);
 					}
 					else if (child.isFolder()) {
-						contents.put(FileType.FOLDER, child.name);
+						contents.put(child.name, FileType.FOLDER);
 					}
 				}
 			}
