@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -37,6 +38,7 @@ import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
 import org.syncany.plugins.transfer.feature.PathAware;
 import org.syncany.plugins.transfer.feature.PathAwareFeatureExtension;
+import org.syncany.plugins.transfer.feature.PathAwareTransferManager;
 import org.syncany.plugins.transfer.files.ActionRemoteFile;
 import org.syncany.plugins.transfer.files.CleanupRemoteFile;
 import org.syncany.plugins.transfer.files.DatabaseRemoteFile;
@@ -248,20 +250,20 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	}
 
 	@Override
-	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
-		if (remoteFile.equals(MultichunkRemoteFile.class)) {
+	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFileClass) {
+		if (remoteFileClass.equals(MultichunkRemoteFile.class)) {
 			return multichunksPath;
 		}
-		else if (remoteFile.equals(DatabaseRemoteFile.class) || remoteFile.equals(CleanupRemoteFile.class)) {
+		else if (remoteFileClass.equals(DatabaseRemoteFile.class) || remoteFileClass.equals(CleanupRemoteFile.class)) {
 			return databasesPath;
 		}
-		else if (remoteFile.equals(ActionRemoteFile.class)) {
+		else if (remoteFileClass.equals(ActionRemoteFile.class)) {
 			return actionsPath;
 		}
-		else if (remoteFile.equals(TransactionRemoteFile.class)) {
+		else if (remoteFileClass.equals(TransactionRemoteFile.class)) {
 			return transactionsPath;
 		}
-		else if (remoteFile.equals(TempRemoteFile.class)) {
+		else if (remoteFileClass.equals(TempRemoteFile.class)) {
 			return tempPath;
 		}
 		else {
@@ -270,7 +272,21 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	}
 
 	private String getRemoteFile(RemoteFile remoteFile) {
-		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
+		String rootPath = getRemoteFilePath(remoteFile.getClass());
+		String subfolder = "";
+
+		try {
+			PathAwareTransferManager.PathAwareRemoteFileAttributes attributes = remoteFile.getAttributes(PathAwareTransferManager.PathAwareRemoteFileAttributes.class);
+
+			if (attributes.hasPath()) {
+				subfolder = attributes.getPath();
+			}
+		}
+		catch (NoSuchFieldException e) {
+			logger.log(Level.WARNING, "TransferManager is annotated with @PathAware but files do not possess path aware attributes");
+		}
+
+		return Paths.get(rootPath, subfolder, remoteFile.getName()).toString();
 	}
 
 	@Override
@@ -368,14 +384,6 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
-	private int getSubfolderDepth() {
-		return this.getClass().getAnnotation(PathAware.class).subfolderDepth();
-	}
-
-	private char getFolderSeperator() {
-		return this.getClass().getAnnotation(PathAware.class).folderSeparator();
-	}
-
 	public static class DropboxTransferManagerFeatureExtension implements PathAwareFeatureExtension {
 
 		private final DropboxTransferManager transferManager;
@@ -385,33 +393,24 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 
 		@Override
-		public boolean createPath(String path) throws StorageException {
+		public boolean createFolder(String path) throws StorageException {
 			// Dropbox always creates a path structure implicitly.
 			return true;
 		}
 
 		@Override
-		public boolean removeEmptyFolder(String path) throws StorageException {
-			logger.log(Level.FINE, "Cleaning up folder " + path);
+		public boolean removeFolder(String path) throws StorageException {
+			logger.log(Level.FINE, "Deleting folder " + path);
 
 			try {
-				for (int i = 0; i < transferManager.getSubfolderDepth(); i++) {
-
-					if (isEmpty(path)) {
-						transferManager.client.delete(path);
-						path = path.substring(0, path.lastIndexOf(transferManager.getFolderSeperator()));
-					}
-					else {
-						break;
-					}
-				}
+				transferManager.client.delete(path);
+				return true;
 			}
 			catch (DbxException e) {
 				logger.log(Level.SEVERE, "Unable to delete remote path", e);
-				throw new StorageException("Unable to delete remote path", e);
+				return false;
 			}
 
-			return false;
 		}
 
 		@Override
