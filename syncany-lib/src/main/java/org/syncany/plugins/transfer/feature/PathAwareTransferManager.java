@@ -116,7 +116,7 @@ public class PathAwareTransferManager implements TransferManager {
 			throw new StorageException("Unable to create path for " + pathAwareTargetFile);
 		}
 
-		underlyingTransferManager.move(createPathAwareRemoteFile(sourceFile), pathAwareTargetFile);
+		underlyingTransferManager.move(pathAwareSourceFile, pathAwareTargetFile);
 		removeFolder(pathAwareSourceFile);
 	}
 
@@ -153,10 +153,10 @@ public class PathAwareTransferManager implements TransferManager {
 	private <T extends RemoteFile> void list(String remoteFilePath, Map<String, T> remoteFiles, Class<T> remoteFileClass) throws StorageException {
 		logger.log(Level.SEVERE, "Listing folder: " + remoteFilePath);
 
-		for (Map.Entry<FileType, String> item : pathAwareFeatureExtension.listFolder(remoteFilePath).entrySet()) {
-			String itemName = item.getValue();
+		for (Map.Entry<String, FileType> item : pathAwareFeatureExtension.listFolder(remoteFilePath).entrySet()) {
+			String itemName = item.getKey();
 
-			switch (item.getKey()) {
+			switch (item.getValue()) {
 				case FILE:
 					remoteFiles.put(itemName, RemoteFile.createRemoteFile(itemName, remoteFileClass));
 					break;
@@ -289,7 +289,7 @@ public class PathAwareTransferManager implements TransferManager {
 	private boolean removeFolder(String folder) throws StorageException {
 		for(int i = 0; i < subfolderDepth; i++) {
 			logger.log(Level.FINE, "Removing folder " + folder);
-			
+
 			if (pathAwareFeatureExtension.listFolder(folder).size() != 0) {
 				return true;
 			}
