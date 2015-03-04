@@ -87,7 +87,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		this.path = URI.create("/" + settings.getPath()).normalize();
 		this.multichunksPath = makeChildURI(this.path, "multichunks");
 		this.databasesPath = makeChildURI(this.path, "databases");
-		this.actionsPath = makeChildURI(this.path, "action");
+		this.actionsPath = makeChildURI(this.path, "actions");
 		this.transactionsPath = makeChildURI(this.path, "transactions");
 		this.tempPath = makeChildURI(this.path, "temporary");
 
