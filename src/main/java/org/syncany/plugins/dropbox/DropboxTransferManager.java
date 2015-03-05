@@ -85,11 +85,11 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		super(settings, config);
 
 		this.path = URI.create("/" + settings.getPath()).normalize();
-		this.multichunksPath = makeChildURI(this.path, "multichunks");
-		this.databasesPath = makeChildURI(this.path, "databases");
-		this.actionsPath = makeChildURI(this.path, "actions");
-		this.transactionsPath = makeChildURI(this.path, "transactions");
-		this.tempPath = makeChildURI(this.path, "temporary");
+		this.multichunksPath = createUri(this.path, "multichunks");
+		this.databasesPath = createUri(this.path, "databases");
+		this.actionsPath = createUri(this.path, "actions");
+		this.transactionsPath = createUri(this.path, "transactions");
+		this.tempPath = createUri(this.path, "temporary");
 
 		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
@@ -390,10 +390,11 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
-	private URI makeChildURI(URI parent, String child) {
+	private URI createUri(URI parent, String child) {
 		if (!parent.toString().endsWith("/")) {
 			parent = URI.create(parent.toString() + "/");
 		}
+
 		return parent.resolve(child);
 	}
 
