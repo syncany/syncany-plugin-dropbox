@@ -20,8 +20,6 @@ notifications:
 before_install:
   # Standard Stuff
   - sudo apt-get update
-  - sudo apt-get install -y -q lftp
-  - lftp -v
   - mkdir ~/.gradle 2> /dev/null || true
   - echo "org.gradle.daemon=true" > ~/.gradle/gradle.properties
 
