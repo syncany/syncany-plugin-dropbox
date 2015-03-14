@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -44,7 +45,6 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
-
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
@@ -74,22 +74,22 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
 	private final DbxClient client;
-	private final String path;
-	private final String multichunksPath;
-	private final String databasesPath;
-	private final String actionsPath;
-	private final String transactionsPath;
-	private final String tempPath;
+	private final URI path;
+	private final URI multichunksPath;
+	private final URI databasesPath;
+	private final URI actionsPath;
+	private final URI transactionsPath;
+	private final URI tempPath;
 
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
 
-		this.path = ("/" + settings.getPath()).replaceAll("[/]{2,}", "/");
-		this.multichunksPath = new File(path, "/multichunks/").getPath();
-		this.databasesPath = new File(path, "/databases/").getPath();
-		this.actionsPath = new File(path, "/actions/").getPath();
-		this.transactionsPath = new File(path, "/transactions/").getPath();
-		this.tempPath = new File(path, "/temporary/").getPath();
+		this.path = URI.create("/" + settings.getPath()).normalize();
+		this.multichunksPath = createUri(this.path, "multichunks");
+		this.databasesPath = createUri(this.path, "databases");
+		this.actionsPath = createUri(this.path, "actions");
+		this.transactionsPath = createUri(this.path, "transactions");
+		this.tempPath = createUri(this.path, "temporary");
 
 		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
@@ -119,14 +119,14 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 		try {
 			if (!testTargetExists() && createIfRequired) {
-				client.createFolder(path);
+				client.createFolder(path.toString());
 			}
 
-			client.createFolder(multichunksPath);
-			client.createFolder(databasesPath);
-			client.createFolder(actionsPath);
-			client.createFolder(transactionsPath);
-			client.createFolder(tempPath);
+			client.createFolder(multichunksPath.toString());
+			client.createFolder(databasesPath.toString());
+			client.createFolder(actionsPath.toString());
+			client.createFolder(transactionsPath.toString());
+			client.createFolder(tempPath.toString());
 		}
 		catch (DbxException e) {
 			throw new StorageException("init: Cannot create required directories", e);
@@ -276,22 +276,22 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
 		if (remoteFile.equals(MultichunkRemoteFile.class)) {
-			return multichunksPath;
+			return multichunksPath.toString();
 		}
 		else if (remoteFile.equals(DatabaseRemoteFile.class) || remoteFile.equals(CleanupRemoteFile.class)) {
-			return databasesPath;
+			return databasesPath.toString();
 		}
 		else if (remoteFile.equals(ActionRemoteFile.class)) {
-			return actionsPath;
+			return actionsPath.toString();
 		}
 		else if (remoteFile.equals(TransactionRemoteFile.class)) {
-			return transactionsPath;
+			return transactionsPath.toString();
 		}
 		else if (remoteFile.equals(TempRemoteFile.class)) {
-			return tempPath;
+			return tempPath.toString();
 		}
 		else {
-			return path;
+			return path.toString();
 		}
 	}
 
@@ -324,7 +324,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetExists() {
 		try {
-			DbxEntry metadata = client.getMetadata(path);
+			DbxEntry metadata = client.getMetadata(path.toString());
 
 			if (metadata != null && metadata.isFolder()) {
 				logger.log(Level.INFO, "testTargetExists: Target does exist.");
@@ -344,7 +344,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetCanCreate() {
 		// Find parent path
-		String repoPathNoSlash = FileUtil.removeTrailingSlash(path);
+		String repoPathNoSlash = FileUtil.removeTrailingSlash(path.toString());
 		int repoPathLastSlash = repoPathNoSlash.lastIndexOf("/");
 		String parentPath = (repoPathLastSlash > 0) ? repoPathNoSlash.substring(0, repoPathLastSlash) : "/";
 
@@ -389,4 +389,13 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			return false;
 		}
 	}
+
+	private URI createUri(URI parent, String child) {
+		if (!parent.toString().endsWith("/")) {
+			parent = URI.create(parent.toString() + "/");
+		}
+
+		return parent.resolve(child);
+	}
+
 }
