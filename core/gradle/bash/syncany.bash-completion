@@ -174,7 +174,8 @@ _sy() {
 	PLUGIN_LIST_OPTIONS="\
 		-R --remote-only\
 		-L --local-only\
-		-s --snapshots"
+		-s --snapshots\
+		-a --api-endpoint"
 
 	PLUGIN_INSTALL_OPTIONS="\
 		-s --snapshot\
@@ -230,7 +231,8 @@ _sy() {
 		-t --target"
 
 	STATUS_OPTIONS="\
-		-f --force-checksum"
+		-f --force-checksum\
+		-D --no-delete"
 
 	UP_OPTIONS="\
 		-R --no-resume\
@@ -247,11 +249,10 @@ _sy() {
 
 	CLEANUP_OPTIONS="\
 		-F --force\
-		-V --no-version-removal\
+		-o --delete-older-than\
+		-I --no-delete-interval\
+		-O --no-delete-older-than\
 		-T --no-temp-removal\
-		-k --keep-versions\
-		-t --time-between-cleanups\
-		-x --max-database-files\
 		$STATUS_OPTIONS"
 
 	# Un-comment this for debug purposes:
