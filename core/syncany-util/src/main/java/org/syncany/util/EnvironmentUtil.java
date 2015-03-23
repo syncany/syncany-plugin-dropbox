@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2015 Philipp C. Heckel <philipp.heckel@gmail.com> 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 package org.syncany.util;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class EnvironmentUtil {
 	public enum OperatingSystem {
@@ -72,6 +74,10 @@ public class EnvironmentUtil {
 
 	public static boolean symlinksSupported() {
 		return isUnixLikeOperatingSystem();
+	}
+	
+	public static boolean isDebianBased() {
+		return isUnixLikeOperatingSystem() && Files.exists(Paths.get("/usr/bin/dpkg"));
 	}
 
 	/**
