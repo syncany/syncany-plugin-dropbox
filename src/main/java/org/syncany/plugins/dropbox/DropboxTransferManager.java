@@ -84,12 +84,12 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
 
-		this.path = URI.create("/" + settings.getPath()).normalize();
-		this.multichunksPath = createUri(this.path, "multichunks");
-		this.databasesPath = createUri(this.path, "databases");
-		this.actionsPath = createUri(this.path, "actions");
-		this.transactionsPath = createUri(this.path, "transactions");
-		this.tempPath = createUri(this.path, "temporary");
+		this.path = UriBuilder.fromRoot("/").toChild(settings.getPath()).build();
+		this.multichunksPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("multichunks").build();
+		this.databasesPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("databases").build();
+		this.actionsPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("actions").build();
+		this.transactionsPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("transactions").build();
+		this.tempPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("temporary").build();
 
 		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
@@ -388,14 +388,6 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			logger.log(Level.INFO, "testRepoFileExists: Exception when trying to check repo file existence.", e);
 			return false;
 		}
-	}
-
-	private URI createUri(URI parent, String child) {
-		if (!parent.toString().endsWith("/")) {
-			parent = URI.create(parent.toString() + "/");
-		}
-
-		return parent.resolve(child);
 	}
 
 }
