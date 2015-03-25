@@ -57,7 +57,7 @@ public class UriBuilder {
 		toClean = toClean.replaceAll("/{2,}", "/");
 
 		if (!endingSeparator) {
-			toClean = toClean.replaceAll("/$", "");
+			toClean = toClean.replaceAll("^(.+)/$", "$1");
 		}
 
 		return toClean;

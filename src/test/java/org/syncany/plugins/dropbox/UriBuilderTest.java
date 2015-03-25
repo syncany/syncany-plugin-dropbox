@@ -49,4 +49,11 @@ public class UriBuilderTest {
 		assertEquals(URI.create("/a/b/"), UriBuilder.fromRoot("\\a").toChild("\\b\\").withEndingSeparator().build());
 	}
 
+	@Test
+	public void testEmptyUris() {
+		assertEquals(URI.create("/"), UriBuilder.fromRoot("/").build());
+		assertEquals(URI.create("/"), UriBuilder.fromRoot("//").build());
+		assertEquals(URI.create("/"), UriBuilder.fromRoot("/").toChild("/").build());
+		assertEquals(URI.create("/"), UriBuilder.fromRoot("//").toChild("/").build());
+	}
 }
