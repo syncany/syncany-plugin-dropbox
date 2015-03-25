@@ -15,7 +15,6 @@ public class UriBuilderTest {
 
 	@Test
 	public void testLinuxStyleSeparator() {
-
 		assertEquals(URI.create("/a"), UriBuilder.fromRoot("/a").build());
 		assertEquals(URI.create("/a/"), UriBuilder.fromRoot("/a").withEndingSeparator().build());
 
@@ -30,12 +29,10 @@ public class UriBuilderTest {
 
 		assertEquals(URI.create("/a/b/"), UriBuilder.fromRoot("/a").toChild("/b").withEndingSeparator().build());
 		assertEquals(URI.create("/a/b/"), UriBuilder.fromRoot("/a").toChild("/b/").withEndingSeparator().build());
-
 	}
 
 	@Test
 	public void testWindowsStyleSeparator() {
-
 		assertEquals(URI.create("/a"), UriBuilder.fromRoot("\\a").build());
 		assertEquals(URI.create("/a/"), UriBuilder.fromRoot("\\a").withEndingSeparator().build());
 
@@ -50,7 +47,6 @@ public class UriBuilderTest {
 
 		assertEquals(URI.create("/a/b/"), UriBuilder.fromRoot("\\a").toChild("\\b").withEndingSeparator().build());
 		assertEquals(URI.create("/a/b/"), UriBuilder.fromRoot("\\a").toChild("\\b\\").withEndingSeparator().build());
-
 	}
 
 }
