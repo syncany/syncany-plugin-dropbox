@@ -24,7 +24,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+<<<<<<< HEAD
 import java.nio.file.Paths;
+=======
+import java.net.URI;
+import java.util.HashMap;
+>>>>>>> develop
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -79,22 +84,22 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
 	private final DbxClient client;
-	private final String path;
-	private final String multichunksPath;
-	private final String databasesPath;
-	private final String actionsPath;
-	private final String transactionsPath;
-	private final String tempPath;
+	private final URI path;
+	private final URI multichunksPath;
+	private final URI databasesPath;
+	private final URI actionsPath;
+	private final URI transactionsPath;
+	private final URI tempPath;
 
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
 
-		this.path = ("/" + settings.getPath()).replaceAll("[/]{2,}", "/");
-		this.multichunksPath = new File(path, "/multichunks/").getPath();
-		this.databasesPath = new File(path, "/databases/").getPath();
-		this.actionsPath = new File(path, "/actions/").getPath();
-		this.transactionsPath = new File(path, "/transactions/").getPath();
-		this.tempPath = new File(path, "/temporary/").getPath();
+		this.path = UriBuilder.fromRoot("/").toChild(settings.getPath()).build();
+		this.multichunksPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("multichunks").build();
+		this.databasesPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("databases").build();
+		this.actionsPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("actions").build();
+		this.transactionsPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("transactions").build();
+		this.tempPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("temporary").build();
 
 		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
@@ -124,14 +129,14 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 		try {
 			if (!testTargetExists() && createIfRequired) {
-				client.createFolder(path);
+				client.createFolder(path.toString());
 			}
 
-			client.createFolder(multichunksPath);
-			client.createFolder(databasesPath);
-			client.createFolder(actionsPath);
-			client.createFolder(transactionsPath);
-			client.createFolder(tempPath);
+			client.createFolder(multichunksPath.toString());
+			client.createFolder(databasesPath.toString());
+			client.createFolder(actionsPath.toString());
+			client.createFolder(transactionsPath.toString());
+			client.createFolder(tempPath.toString());
 		}
 		catch (DbxException e) {
 			throw new StorageException("init: Cannot create required directories", e);
@@ -249,6 +254,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		throw new UnsupportedOperationException("Extension is path aware! Hence, TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)");
 	}
 
+<<<<<<< HEAD
 	@Override
 	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFileClass) {
 		if (remoteFileClass.equals(MultichunkRemoteFile.class)) {
@@ -265,9 +271,30 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 		else if (remoteFileClass.equals(TempRemoteFile.class)) {
 			return tempPath;
+=======
+	private String getRemoteFile(RemoteFile remoteFile) {
+		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
+	}
+
+	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
+		if (remoteFile.equals(MultichunkRemoteFile.class)) {
+			return multichunksPath.toString();
+		}
+		else if (remoteFile.equals(DatabaseRemoteFile.class) || remoteFile.equals(CleanupRemoteFile.class)) {
+			return databasesPath.toString();
+		}
+		else if (remoteFile.equals(ActionRemoteFile.class)) {
+			return actionsPath.toString();
+		}
+		else if (remoteFile.equals(TransactionRemoteFile.class)) {
+			return transactionsPath.toString();
+		}
+		else if (remoteFile.equals(TempRemoteFile.class)) {
+			return tempPath.toString();
+>>>>>>> develop
 		}
 		else {
-			return path;
+			return path.toString();
 		}
 	}
 
@@ -318,7 +345,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetExists() {
 		try {
-			DbxEntry metadata = client.getMetadata(path);
+			DbxEntry metadata = client.getMetadata(path.toString());
 
 			if (metadata != null && metadata.isFolder()) {
 				logger.log(Level.INFO, "testTargetExists: Target does exist.");
@@ -338,7 +365,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	@Override
 	public boolean testTargetCanCreate() {
 		// Find parent path
-		String repoPathNoSlash = FileUtil.removeTrailingSlash(path);
+		String repoPathNoSlash = FileUtil.removeTrailingSlash(path.toString());
 		int repoPathLastSlash = repoPathNoSlash.lastIndexOf("/");
 		String parentPath = (repoPathLastSlash > 0) ? repoPathNoSlash.substring(0, repoPathLastSlash) : "/";
 
@@ -384,6 +411,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
+<<<<<<< HEAD
 	public static class DropboxTransferManagerFeatureExtension implements PathAwareFeatureExtension {
 
 		private final DropboxTransferManager transferManager;
@@ -439,4 +467,6 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			return contents;
 		}
 	}
+=======
+>>>>>>> develop
 }
