@@ -24,12 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-<<<<<<< HEAD
-import java.nio.file.Paths;
-=======
 import java.net.URI;
-import java.util.HashMap;
->>>>>>> develop
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,7 +39,7 @@ import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
 import org.syncany.plugins.transfer.features.PathAware;
 import org.syncany.plugins.transfer.features.PathAwareFeatureExtension;
-import org.syncany.plugins.transfer.features.PathAwareTransferManager;
+import org.syncany.plugins.transfer.features.PathAwareFeatureTransferManager.PathAwareRemoteFileAttributes;
 import org.syncany.plugins.transfer.files.ActionRemoteFile;
 import org.syncany.plugins.transfer.files.CleanupRemoteFile;
 import org.syncany.plugins.transfer.files.DatabaseRemoteFile;
@@ -53,6 +49,7 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
+
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
@@ -63,23 +60,23 @@ import com.google.common.collect.Maps;
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
  * {@link DropboxTransferPlugin}.
- * <p/>
+ * 
  * <p>Using an {@link DropboxTransferSettings}, the transfer manager is configured and uses
  * a well defined Samba share and folder to store the Syncany repository data. While repo and
  * master file are stored in the given folder, databases and multichunks are stored
  * in special sub-folders:
- * <p/>
+ * 
  * <ul>
- * <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
- * <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
+ *   <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
+ *   <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
  * </ul>
- * <p/>
+ * 
  * <p>All operations are auto-connected, i.e. a connection is automatically
  * established.
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
-@PathAware(bytesPerFolder = 2, subfolderDepth = 2, folderSeparator = '/', affected = {MultichunkRemoteFile.class, TempRemoteFile.class}, extension = DropboxTransferManager.DropboxTransferManagerFeatureExtension.class)
+@PathAware(extension = DropboxTransferManager.DropboxTransferManagerFeatureExtension.class)
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
@@ -254,29 +251,8 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		throw new UnsupportedOperationException("Extension is path aware! Hence, TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)");
 	}
 
-<<<<<<< HEAD
 	@Override
-	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFileClass) {
-		if (remoteFileClass.equals(MultichunkRemoteFile.class)) {
-			return multichunksPath;
-		}
-		else if (remoteFileClass.equals(DatabaseRemoteFile.class) || remoteFileClass.equals(CleanupRemoteFile.class)) {
-			return databasesPath;
-		}
-		else if (remoteFileClass.equals(ActionRemoteFile.class)) {
-			return actionsPath;
-		}
-		else if (remoteFileClass.equals(TransactionRemoteFile.class)) {
-			return transactionsPath;
-		}
-		else if (remoteFileClass.equals(TempRemoteFile.class)) {
-			return tempPath;
-=======
-	private String getRemoteFile(RemoteFile remoteFile) {
-		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
-	}
-
-	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
+	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
 		if (remoteFile.equals(MultichunkRemoteFile.class)) {
 			return multichunksPath.toString();
 		}
@@ -291,7 +267,6 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 		else if (remoteFile.equals(TempRemoteFile.class)) {
 			return tempPath.toString();
->>>>>>> develop
 		}
 		else {
 			return path.toString();
@@ -303,7 +278,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		String subfolder = "";
 
 		try {
-			PathAwareTransferManager.PathAwareRemoteFileAttributes attributes = remoteFile.getAttributes(PathAwareTransferManager.PathAwareRemoteFileAttributes.class);
+			PathAwareRemoteFileAttributes attributes = remoteFile.getAttributes(PathAwareRemoteFileAttributes.class);
 
 			if (attributes.hasPath()) {
 				subfolder = attributes.getPath();
@@ -411,9 +386,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
-<<<<<<< HEAD
 	public static class DropboxTransferManagerFeatureExtension implements PathAwareFeatureExtension {
-
 		private final DropboxTransferManager transferManager;
 
 		public DropboxTransferManagerFeatureExtension(DropboxTransferManager transferManager) {
@@ -467,6 +440,4 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			return contents;
 		}
 	}
-=======
->>>>>>> develop
 }
