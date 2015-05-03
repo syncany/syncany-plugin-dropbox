@@ -9,6 +9,7 @@ Change Log
   + Add theme and tray icon selector in GUI
   + Add update check to GUI in general settings panel, and daily update check #415
   + Add support for enums as transfer setting values #280
+  + Add automatic OAuth token handling #426
 - Bugfixes and other things:
   + Make sure that plugin update on Windows is able to install snapshots #418
   + Working single repos for dropbox plugin #417
@@ -16,6 +17,7 @@ Change Log
   + Fix Unity tray disappear after Python process crash by restarting #370
   + Several stability bugfixes #433
   + Don't use web sockets for IPC between daemon and GUI if in same JVM #373
+  + Fix daemon PID empty error #439
 
 ### Syncany 0.4.4-alpha (Date: 22 Mar 2015)
 - Developer/alpha release (**We are now nearing the beta phase. Stay tuned!**)
