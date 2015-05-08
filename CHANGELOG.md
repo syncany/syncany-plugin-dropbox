@@ -1,5 +1,7 @@
 Change Log
 ==========
+### Syncany Dropbox Plugin 0.4.5-alpha (Date: 8 May 2015)
+- Folderization (enabling many files per folder)
 
 ### Syncany Dropbox Plugin 0.4.4-alpha (Date: 23 Mar 2015)
 - Fix paths issue
