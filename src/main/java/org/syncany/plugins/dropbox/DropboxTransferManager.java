@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
-import java.util.HashMap;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,9 +33,13 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.syncany.config.Config;
 import org.syncany.plugins.transfer.AbstractTransferManager;
+import org.syncany.plugins.transfer.FileType;
 import org.syncany.plugins.transfer.StorageException;
 import org.syncany.plugins.transfer.StorageMoveException;
 import org.syncany.plugins.transfer.TransferManager;
+import org.syncany.plugins.transfer.features.PathAware;
+import org.syncany.plugins.transfer.features.PathAwareFeatureExtension;
+import org.syncany.plugins.transfer.features.PathAwareFeatureTransferManager.PathAwareRemoteFileAttributes;
 import org.syncany.plugins.transfer.files.ActionRemoteFile;
 import org.syncany.plugins.transfer.files.CleanupRemoteFile;
 import org.syncany.plugins.transfer.files.DatabaseRemoteFile;
@@ -45,31 +49,34 @@ import org.syncany.plugins.transfer.files.SyncanyRemoteFile;
 import org.syncany.plugins.transfer.files.TempRemoteFile;
 import org.syncany.plugins.transfer.files.TransactionRemoteFile;
 import org.syncany.util.FileUtil;
+
 import com.dropbox.core.DbxClient;
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxException.BadResponseCode;
 import com.dropbox.core.DbxWriteMode;
+import com.google.common.collect.Maps;
 
 /**
  * Implements a {@link TransferManager} based on an Dropbox storage backend for the
  * {@link DropboxTransferPlugin}.
- * <p/>
+ * 
  * <p>Using an {@link DropboxTransferSettings}, the transfer manager is configured and uses
  * a well defined Samba share and folder to store the Syncany repository data. While repo and
  * master file are stored in the given folder, databases and multichunks are stored
  * in special sub-folders:
- * <p/>
+ * 
  * <ul>
- * <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
- * <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
+ *   <li>The <tt>databases</tt> folder keeps all the {@link DatabaseRemoteFile}s</li>
+ *   <li>The <tt>multichunks</tt> folder keeps the actual data within the {@link MultiChunkRemoteFile}s</li>
  * </ul>
- * <p/>
+ * 
  * <p>All operations are auto-connected, i.e. a connection is automatically
  * established.
  *
  * @author Christian Roth <christian.roth@port17.de>
  */
+@PathAware(extension = DropboxTransferManager.DropboxTransferManagerFeatureExtension.class)
 public class DropboxTransferManager extends AbstractTransferManager {
 	private static final Logger logger = Logger.getLogger(DropboxTransferManager.class.getSimpleName());
 
@@ -84,12 +91,12 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public DropboxTransferManager(DropboxTransferSettings settings, Config config) {
 		super(settings, config);
 
-		this.path = URI.create("/" + settings.getPath()).normalize();
-		this.multichunksPath = createUri(this.path, "multichunks");
-		this.databasesPath = createUri(this.path, "databases");
-		this.actionsPath = createUri(this.path, "actions");
-		this.transactionsPath = createUri(this.path, "transactions");
-		this.tempPath = createUri(this.path, "temporary");
+		this.path = UriBuilder.fromRoot("/").toChild(settings.getPath()).build();
+		this.multichunksPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("multichunks").build();
+		this.databasesPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("databases").build();
+		this.actionsPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("actions").build();
+		this.transactionsPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("transactions").build();
+		this.tempPath = UriBuilder.fromRoot("/").toChild(settings.getPath()).toChild("temporary").build();
 
 		this.client = new DbxClient(DropboxTransferPlugin.DROPBOX_REQ_CONFIG, settings.getAccessToken());
 	}
@@ -98,7 +105,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 	public void connect() throws StorageException {
 		// make a connect
 		try {
-			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[] { client.getAccountInfo().displayName });
+			logger.log(Level.INFO, "Using dropbox account from {0}", new Object[]{client.getAccountInfo().displayName});
 		}
 		catch (DbxException.InvalidAccessToken e) {
 			throw new StorageException("The accessToken in use is invalid", e);
@@ -147,7 +154,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 				OutputStream tempFOS = new FileOutputStream(tempFile);
 
 				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[] { remotePath, tempFile });
+					logger.log(Level.INFO, "Dropbox: Downloading {0} to temp file {1}", new Object[]{remotePath, tempFile});
 				}
 
 				client.getFile(remotePath, null, tempFOS);
@@ -156,7 +163,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 				// Move file
 				if (logger.isLoggable(Level.INFO)) {
-					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempFile, localFile });
+					logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[]{tempFile, localFile});
 				}
 
 				localFile.delete();
@@ -180,7 +187,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			InputStream fileFIS = new FileInputStream(localFile);
 
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[] { localFile, tempRemotePath });
+				logger.log(Level.INFO, "Dropbox: Uploading {0} to temp file {1}", new Object[]{localFile, tempRemotePath});
 			}
 
 			client.uploadFile(tempRemotePath, DbxWriteMode.add(), localFile.length(), fileFIS);
@@ -189,7 +196,7 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 			// Move
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[] { tempRemotePath, remotePath });
+				logger.log(Level.INFO, "Dropbox: Renaming temp file {0} to file {1}", new Object[]{tempRemotePath, remotePath});
 			}
 
 			client.move(tempRemotePath, remotePath);
@@ -240,41 +247,12 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 	@Override
 	public <T extends RemoteFile> Map<String, T> list(Class<T> remoteFileClass) throws StorageException {
-		try {
-			// List folder
-			String remoteFilePath = getRemoteFilePath(remoteFileClass);
-
-			DbxEntry.WithChildren listing = client.getMetadataWithChildren(remoteFilePath);
-
-			// Create RemoteFile objects
-			Map<String, T> remoteFiles = new HashMap<String, T>();
-
-			for (DbxEntry child : listing.children) {
-				try {
-					T remoteFile = RemoteFile.createRemoteFile(child.name, remoteFileClass);
-					remoteFiles.put(child.name, remoteFile);
-				}
-				catch (Exception e) {
-					logger.log(Level.INFO, "Cannot create instance of " + remoteFileClass.getSimpleName() + " for file " + child.name
-							+ "; maybe invalid file name pattern. Ignoring file.");
-				}
-			}
-
-			return remoteFiles;
-		}
-		catch (DbxException ex) {
-			disconnect();
-
-			logger.log(Level.SEVERE, "Unable to list Dropbox directory.", ex);
-			throw new StorageException(ex);
-		}
+		// TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)
+		throw new UnsupportedOperationException("Extension is path aware! Hence, TransferManager.list(Class<T> remoteFileClass) has been superseded by PathAwareFeatureExtension.list(String path)");
 	}
 
-	private String getRemoteFile(RemoteFile remoteFile) {
-		return getRemoteFilePath(remoteFile.getClass()) + "/" + remoteFile.getName();
-	}
-
-	private String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
+	@Override
+	public String getRemoteFilePath(Class<? extends RemoteFile> remoteFile) {
 		if (remoteFile.equals(MultichunkRemoteFile.class)) {
 			return multichunksPath.toString();
 		}
@@ -293,6 +271,23 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		else {
 			return path.toString();
 		}
+	}
+
+	private String getRemoteFile(RemoteFile remoteFile) {
+		String rootPath = getRemoteFilePath(remoteFile.getClass());
+		String subfolder = "";
+
+		PathAwareRemoteFileAttributes attributes = remoteFile.getAttributes(PathAwareRemoteFileAttributes.class);
+		boolean hasSubPath = attributes != null && attributes.hasPath();
+		
+		if (hasSubPath) {
+			subfolder = attributes.getPath();
+		}
+		else {
+			logger.log(Level.WARNING, "TransferManager is annotated with @PathAware but files do not possess path aware attributes");
+		}
+
+		return Paths.get(rootPath, subfolder, remoteFile.getName()).toString();
 	}
 
 	@Override
@@ -390,12 +385,58 @@ public class DropboxTransferManager extends AbstractTransferManager {
 		}
 	}
 
-	private URI createUri(URI parent, String child) {
-		if (!parent.toString().endsWith("/")) {
-			parent = URI.create(parent.toString() + "/");
+	public static class DropboxTransferManagerFeatureExtension implements PathAwareFeatureExtension {
+		private final DropboxTransferManager transferManager;
+
+		public DropboxTransferManagerFeatureExtension(DropboxTransferManager transferManager) {
+			this.transferManager = transferManager;
 		}
 
-		return parent.resolve(child);
-	}
+		@Override
+		public boolean createPath(String path) throws StorageException {
+			// Dropbox always creates a path structure implicitly.
+			return true;
+		}
 
+		@Override
+		public boolean removeFolder(String path) throws StorageException {
+			logger.log(Level.FINE, "Deleting folder " + path);
+
+			try {
+				transferManager.client.delete(path);
+				return true;
+			}
+			catch (DbxException e) {
+				logger.log(Level.SEVERE, "Unable to delete remote path", e);
+				return false;
+			}
+
+		}
+
+		@Override
+		public Map<String, FileType> listFolder(String path) throws StorageException {
+			logger.log(Level.FINE, "Listing folder " + path);
+
+			Map<String, FileType> contents = Maps.newHashMap();
+
+			try {
+				DbxEntry.WithChildren listing = transferManager.client.getMetadataWithChildren(path);
+
+				for (DbxEntry child : listing.children) {
+					if (child.isFile()) {
+						contents.put(child.name, FileType.FILE);
+					}
+					else if (child.isFolder()) {
+						contents.put(child.name, FileType.FOLDER);
+					}
+				}
+			}
+			catch (DbxException e) {
+				logger.log(Level.SEVERE, "Unable to list folder", e);
+				throw new StorageException("Unable to list folder", e);
+			}
+
+			return contents;
+		}
+	}
 }
