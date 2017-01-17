@@ -287,7 +287,9 @@ public class DropboxTransferManager extends AbstractTransferManager {
 			logger.log(Level.WARNING, "TransferManager is annotated with @PathAware but files do not possess path aware attributes");
 		}
 
-		return Paths.get(rootPath, subfolder, remoteFile.getName()).toString();
+		UriBuilder builder = UriBuilder.fromRoot(rootPath);
+		builder.toChild(subfolder).toChild(remoteFile.getName());
+		return builder.build().toString();
 	}
 
 	@Override
