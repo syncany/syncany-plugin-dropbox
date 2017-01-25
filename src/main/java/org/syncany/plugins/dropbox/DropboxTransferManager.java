@@ -423,6 +423,9 @@ public class DropboxTransferManager extends AbstractTransferManager {
 
 			try {
 				DbxEntry.WithChildren listing = transferManager.client.getMetadataWithChildren(path);
+				if (listing == null || listing.children == null) {
+					return contents;
+				}
 
 				for (DbxEntry child : listing.children) {
 					if (child.isFile()) {
